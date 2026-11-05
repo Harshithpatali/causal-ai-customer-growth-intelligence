@@ -1,5 +1,5 @@
 import pandas as pd
-from causal_ai.report_generator import build_report_context, build_report_messages
+from causal_ai.report_generator import build_report_context, build_report_messages, build_report_chart_data
 
 def test_report_context_is_aggregate_only():
     df = pd.DataFrame({"segment": ["Mens E-Mail", "No E-Mail"], "email": ["private-a", "private-b"]})
@@ -15,3 +15,27 @@ def test_prompt_has_guardrails_and_embeds_evidence():
     assert "realized profit" in messages[0]["content"]
     assert "VERIFIED_AGGREGATE_EVIDENCE" in messages[1]["content"]
     assert "10" in messages[1]["content"]
+
+
+def test_report_chart_data_uses_observed_groups_and_aggregate_policy_values():
+    df = pd.DataFrame({
+        "treatment": [0, 0, 1, 1],
+        "conversion": [0, 1, 1, 1],
+        "spend": [0.0, 10.0, 5.0, 15.0],
+        "email": ["private-a", "private-b", "private-c", "private-d"],
+    })
+    metrics = {
+        "policy_value_ipw": {"value": 1.2, "ci_lower": 0.9, "ci_upper": 1.5},
+        "all_email_value_ipw": {"value": 1.4, "ci_lower": 1.1, "ci_upper": 1.7},
+        "all_control_value_ipw": {"value": 0.6, "ci_lower": 0.4, "ci_upper": 0.8},
+    }
+    chart_data = build_report_chart_data(df, metrics)
+    assert chart_data["outcomes_by_group"][0] == {
+        "group": "No email (control)", "customers": 2,
+        "conversion_rate": 0.5, "mean_spend": 5.0,
+    }
+    assert chart_data["outcomes_by_group"][1]["conversion_rate"] == 1.0
+    assert [row["strategy"] for row in chart_data["holdout_policy_values"]] == [
+        "Model targeting", "Email everyone", "Email nobody"
+    ]
+    assert "private-a" not in str(chart_data)
