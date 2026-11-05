@@ -113,11 +113,12 @@ On first launch, the app downloads the dataset if it is not present. Run the mod
 ## Tests and quality checks
 
 ```bash
+pip install -r requirements-dev.txt
 pytest -q
 python -m compileall -q app.py src scripts tests
 ```
 
-GitHub Actions runs compilation and the automated unit tests. The full 64,000-row model pipeline is kept out of CI to keep checks fast and deterministic.
+Runtime dependencies stay in `requirements.txt`; test tooling is isolated in `requirements-dev.txt`. GitHub Actions installs the development requirements, compiles the Python modules, runs the automated unit tests, and checks dependency consistency. The full 64,000-row model pipeline is kept out of CI to keep checks fast and deterministic.
 
 ## Repository structure
 
