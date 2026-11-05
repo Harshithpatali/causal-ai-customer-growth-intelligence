@@ -5,6 +5,10 @@ __pycache__/
 .env
 .pytest_cache/
 .streamlit/secrets.toml
+.DS_Store
+Thumbs.db
+
+# Downloaded research data and locally generated model artifacts
 data/raw/*
 data/processed/*
 artifacts/*
