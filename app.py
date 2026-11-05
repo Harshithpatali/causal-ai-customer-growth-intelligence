@@ -225,7 +225,7 @@ else:
     d.metric("Unused budget",money(result["unused_budget"]))
     st.subheader("Recommended customer allocation")
     top=result["recommendations"][["recency","history","channel","estimated_incremental_spend",
-        "expected_incremental_profit","recommended_action"]].head(250)
+        "expected_net_contribution","recommended_action"]].head(250)
     st.dataframe(top,use_container_width=True,hide_index=True)
     st.download_button("Download full allocation",result["recommendations"].to_csv(index=False),
                        "campaign_allocation.csv","text/csv")
