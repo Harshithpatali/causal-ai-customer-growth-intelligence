@@ -1,0 +1,14 @@
+project:
+  name: Causal AI Customer Growth
+  random_state: 42
+data:
+  raw_path: data/raw/hillstrom.csv
+  processed_path: data/processed/customers.parquet
+model:
+  test_size: 0.25
+  random_state: 42
+  max_iter: 180
+business:
+  email_cost_per_customer: 0.05
+  contribution_margin: 1.0
+  default_budget: 1000.0

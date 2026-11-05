@@ -1,0 +1,7 @@
+services:
+  - type: web
+    name: causal-ai-api
+    runtime: python
+    buildCommand: pip install -r requirements.txt && python scripts/run_pipeline.py
+    startCommand: uvicorn backend.main:app --host 0.0.0.0 --port $PORT
+    plan: starter

@@ -1,0 +1,13 @@
+{
+  "filename": "hillstrom.csv",
+  "rows": 64000,
+  "original_columns": 12,
+  "missing_cells": 0,
+  "exact_duplicate_rows_retained": 6562,
+  "treatment_group_counts": {
+    "Womens E-Mail": 21387,
+    "Mens E-Mail": 21307,
+    "No E-Mail": 21306
+  },
+  "note": "Exact row duplicates retained because there is no customer identifier; row equality does not prove duplicate customer identities."
+}
