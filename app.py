@@ -343,7 +343,7 @@ if mode == "Executive view":
             )
 
     else:
-        from causal_ai.report_generator import build_report_context, generate_executive_report
+        from causal_ai.report_generator import build_report_context, build_report_chart_data, generate_executive_report
         import os
 
         header("GENERATIVE AI / BUSINESS INTELLIGENCE", "AI Business Reports", "Turn verified experiment evidence into a stakeholder-ready report.")
@@ -355,15 +355,16 @@ if mode == "Executive view":
             groq_api_key = ""
         groq_api_key = groq_api_key or os.getenv("GROQ_API_KEY", "")
         try:
-            groq_model = st.secrets.get("GROQ_MODEL", "llama-3.3-70b-versatile")
+            groq_model = st.secrets.get("GROQ_MODEL", "openai/gpt-oss-120b")
         except Exception:
-            groq_model = "llama-3.3-70b-versatile"
-        groq_model = os.getenv("GROQ_MODEL", groq_model)
+            groq_model = "openai/gpt-oss-120b"
+        groq_model = str(os.getenv("GROQ_MODEL", groq_model)).strip() or "openai/gpt-oss-120b"
+        st.caption(f"Configured Groq model: `{groq_model}`")
         with st.expander("What goes into the report?"):
-            st.markdown("- Randomized experiment size and average treatment effects\\n- Confidence intervals and p-values\\n- Holdout policy values\\n- Model diagnostics and limitations\\n- Business recommendation and next steps")
+            st.markdown("- Randomized experiment size and average treatment effects\\n- Confidence intervals and p-values\\n- Holdout policy values\\n- Model diagnostics and limitations\\n- Business recommendation and next steps\\n- Python-generated charts based on the verified experiment and holdout aggregates")
         if not groq_api_key:
             st.warning("Add GROQ_API_KEY in Streamlit Community Cloud → App settings → Secrets to enable report generation.")
-            st.code('GROQ_API_KEY = "your_groq_api_key"\\nGROQ_MODEL = "llama-3.3-70b-versatile"', language="toml")
+            st.code('GROQ_API_KEY = "your_groq_api_key"\\nGROQ_MODEL = "openai/gpt-oss-120b"', language="toml")
         if st.button("Generate Executive Report", type="primary", disabled=not bool(groq_api_key)):
             context = build_report_context(df, ate_conv, ate_spend, metrics)
             with st.spinner("Generating the executive report with Groq..."):
@@ -372,13 +373,76 @@ if mode == "Executive view":
                     st.session_state["causal_ai_executive_report"] = report
                     st.session_state["causal_ai_report_context"] = context
                 except Exception as exc:
-                    st.error(f"Report generation failed: {exc}")
-                    st.caption("Check the API key, model availability, and network connection.")
+                    error_text = str(exc)
+                    if "model_not_found" in error_text.lower() or "does not exist" in error_text.lower():
+                        st.error(f"Groq cannot access the configured model '{groq_model}'. Check the model ID and that it is enabled for your Groq account.")
+                    elif "401" in error_text or "invalid_api_key" in error_text.lower():
+                        st.error("Groq rejected the API key. Recheck GROQ_API_KEY in Streamlit App settings → Secrets.")
+                    elif "429" in error_text or "rate_limit" in error_text.lower():
+                        st.error("Groq rate limit reached. Wait for the account limit to reset, then try again.")
+                    else:
+                        st.error("Report generation failed. Check the API key, model availability, and network connection.")
+                    with st.expander("Technical error details"):
+                        st.code(error_text[:2000])
         report = st.session_state.get("causal_ai_executive_report")
         if report:
             st.success("Executive report generated.")
             st.markdown(report)
             st.download_button("Download Executive Report (.md)", report, "causal_ai_executive_report.md", "text/markdown")
+
+            # These visuals are calculated locally from the randomized experiment and
+            # holdout metrics. The LLM writes the narrative; it never fabricates chart data.
+            chart_data = build_report_chart_data(df, metrics)
+            st.markdown("### Visual evidence")
+            st.caption("Charts are generated in Python from observed experiment outcomes and precomputed randomized-holdout policy estimates.")
+            if chart_data["outcomes_by_group"]:
+                outcome_df = pd.DataFrame(chart_data["outcomes_by_group"])
+                left, right = st.columns(2)
+                with left:
+                    fig = px.bar(
+                        outcome_df, x="group", y="conversion_rate",
+                        text=outcome_df["conversion_rate"].map(lambda value: f"{value:.2%}"),
+                        title="Observed conversion rate",
+                        labels={"group": "Randomized group", "conversion_rate": "Conversion rate"},
+                        color="group",
+                    )
+                    fig.update_layout(template="plotly_dark", paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)", showlegend=False, yaxis_tickformat=".1%")
+                    st.plotly_chart(fig, use_container_width=True)
+                with right:
+                    fig = px.bar(
+                        outcome_df, x="group", y="mean_spend",
+                        text=outcome_df["mean_spend"].map(money),
+                        title="Observed average spend per customer",
+                        labels={"group": "Randomized group", "mean_spend": "Mean spend ($)"},
+                        color="group",
+                    )
+                    fig.update_layout(template="plotly_dark", paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)", showlegend=False)
+                    st.plotly_chart(fig, use_container_width=True)
+                st.dataframe(outcome_df, use_container_width=True, hide_index=True)
+            if chart_data["holdout_policy_values"]:
+                policy_df = pd.DataFrame(chart_data["holdout_policy_values"])
+                fig = go.Figure()
+                error_plus = [
+                    max(0.0, row["ci_upper"] - row["value"]) if row["ci_upper"] is not None else 0.0
+                    for row in chart_data["holdout_policy_values"]
+                ]
+                error_minus = [
+                    max(0.0, row["value"] - row["ci_lower"]) if row["ci_lower"] is not None else 0.0
+                    for row in chart_data["holdout_policy_values"]
+                ]
+                fig.add_trace(go.Bar(
+                    x=policy_df["strategy"], y=policy_df["value"],
+                    error_y={"type": "data", "array": error_plus, "arrayminus": error_minus, "visible": True},
+                    text=policy_df["value"].map(money), textposition="outside",
+                ))
+                fig.update_layout(
+                    title="Randomized holdout policy value",
+                    xaxis_title="Campaign strategy",
+                    yaxis_title="Estimated spend per customer ($)",
+                    template="plotly_dark", paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)",
+                )
+                st.plotly_chart(fig, use_container_width=True)
+                st.caption("Error bars show the stored 95% confidence intervals when available. Policy value is an inverse-propensity-weighted holdout estimate, not realized profit.")
             with st.expander("Inspect aggregate evidence sent to Groq"):
                 st.json(st.session_state.get("causal_ai_report_context", {}))
         st.caption("AI-generated narrative for decision support. Verify the statistical evidence before making business decisions.")
