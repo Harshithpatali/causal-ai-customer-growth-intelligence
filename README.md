@@ -2,7 +2,7 @@
 
 A **data-science research project** using the Kevin Hillstrom / MineThatData randomized email experiment. The project moves from randomized experiment analysis to heterogeneous treatment-effect modelling, holdout policy evaluation, and budget-scenario sensitivity analysis.
 
-The deliverable is a five-page **Streamlit research dashboard**. It is intentionally Python- and statistics-focused: no separate API service or frontend framework is required.
+The deliverable is a six-page **Streamlit research dashboard**. It is intentionally Python- and statistics-focused: no separate API service or frontend framework is required.
 
 > **Research conclusion:** Email has a positive average effect in this experiment. The current customer-level uplift model has weak outcome prediction (holdout spend R² is close to zero), and its targeting policy has **not demonstrated superiority** to emailing everyone. Individual scores and budget allocations are exploratory analyses, not validated causal effects or production recommendations.
 
@@ -23,6 +23,7 @@ The deliverable is a five-page **Streamlit research dashboard**. It is intention
 | Experimentation Lab | Two-proportion inference, Welch's t-test, confidence intervals |
 | Uplift Intelligence | Two-part T-learner, holdout IPW policy values, Qini-style diagnostic |
 | Budget Scenario Optimizer | Sensitivity to assumed contact cost, contribution margin, and budget |
+| AI Business Reports | Groq-generated executive narrative from aggregate experiment and holdout metrics; Markdown download |
 
 ## Dataset
 
@@ -109,6 +110,20 @@ streamlit run app.py
 ```
 
 On first launch, the app downloads the dataset if it is not present. Run the modelling pipeline once to generate `artifacts/uplift_model.joblib` and evaluation metrics. Streamlit Community Cloud can run the pipeline from the dashboard using **Train causal models now** when artifacts are absent.
+
+## Groq-powered AI Business Reports
+
+The **AI Business Reports** page uses Groq Chat Completions to turn verified aggregate experiment results into an executive Markdown report. Python remains the source of truth; Groq writes the narrative only. The request includes aggregate treatment effects, confidence intervals, p-values, holdout policy values, and model diagnostics. It does **not** send raw customer rows or customer-level scores.
+
+Add the following in Streamlit Community Cloud → **App settings → Secrets** (never commit a real key):
+
+```toml
+GROQ_API_KEY = "your_groq_api_key"
+# Optional model override
+GROQ_MODEL = "llama-3.3-70b-versatile"
+```
+
+The report can be downloaded as Markdown. Generated text is decision support, not a replacement for checking the statistical results. See the [Groq quickstart](https://console.groq.com/docs/quickstart) and [text generation documentation](https://console.groq.com/docs/text-chat).
 
 ## Deploy the dashboard
 
