@@ -358,7 +358,7 @@ if mode == "Executive view":
             groq_model = st.secrets.get("GROQ_MODEL", "openai/gpt-oss-120b")
         except Exception:
             groq_model = "openai/gpt-oss-120b"
-        groq_model = str(os.getenv("GROQ_MODEL", groq_model)).strip() or "openai/gpt-oss-120b"
+        groq_model = str(groq_model or os.getenv("GROQ_MODEL") or "openai/gpt-oss-120b").strip() or "openai/gpt-oss-120b"
         st.caption(f"Configured Groq model: `{groq_model}`")
         with st.expander("What goes into the report?"):
             st.markdown("- Randomized experiment size and average treatment effects\\n- Confidence intervals and p-values\\n- Holdout policy values\\n- Model diagnostics and limitations\\n- Business recommendation and next steps\\n- Python-generated charts based on the verified experiment and holdout aggregates")
@@ -366,6 +366,9 @@ if mode == "Executive view":
             st.warning("Add GROQ_API_KEY in Streamlit Community Cloud → App settings → Secrets to enable report generation.")
             st.code('GROQ_API_KEY = "your_groq_api_key"\\nGROQ_MODEL = "openai/gpt-oss-120b"', language="toml")
         if st.button("Generate Executive Report", type="primary", disabled=not bool(groq_api_key)):
+            # Remove any previous result so a failed retry cannot leave a stale report visible.
+            st.session_state.pop("causal_ai_executive_report", None)
+            st.session_state.pop("causal_ai_report_context", None)
             context = build_report_context(df, ate_conv, ate_spend, metrics)
             with st.spinner("Generating the executive report with Groq..."):
                 try:
