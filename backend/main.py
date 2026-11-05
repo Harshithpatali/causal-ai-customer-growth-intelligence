@@ -7,7 +7,8 @@ import pandas as pd
 from causal_ai.modeling import load_models, score_customers
 from causal_ai.optimization import optimize_budget
 
-app = FastAPI(title="Causal AI Customer Growth API", version="1.0.0")
+app = FastAPI(title="Causal AI Customer Growth API", version="1.1.0")
+
 
 class Customer(BaseModel):
     recency: int = Field(ge=1, le=12)
@@ -19,14 +20,17 @@ class Customer(BaseModel):
     newbie: int = Field(ge=0, le=1)
     channel: str
 
+
 class BudgetRequest(BaseModel):
     budget: float = Field(ge=0)
     contact_cost: float = Field(default=0.05, ge=0)
-    contribution_margin: float = Field(default=1.0, gt=0)
+    contribution_margin: float = Field(default=0.4, ge=0, le=1)
+
 
 @app.get("/health")
 def health():
-    return {"status":"ok", "service":"causal-ai-api"}
+    return {"status": "ok", "service": "causal-ai-api", "version": "1.1.0"}
+
 
 @app.get("/metrics")
 def metrics():
@@ -35,6 +39,7 @@ def metrics():
     if not p.exists():
         raise HTTPException(503, "Run training pipeline first")
     return json.loads(p.read_text())
+
 
 @app.post("/predict")
 def predict(customer: Customer):
@@ -46,24 +51,31 @@ def predict(customer: Customer):
             "predicted_spend_without_email": float(result.predicted_spend_control),
             "predicted_spend_with_email": float(result.predicted_spend_treatment),
             "estimated_incremental_spend": float(result.estimated_incremental_spend),
-            "recommendation": "Consider targeting" if result.estimated_incremental_spend > 0.05 else "Do not target"
+            "policy_validation_status": "exploratory_not_validated",
+            "note": "Model-estimated conditional effect, not an observed individual causal effect. The current holdout does not demonstrate superiority to emailing everyone."
         }
     except FileNotFoundError as exc:
         raise HTTPException(503, str(exc))
+
 
 @app.post("/optimize")
 def optimize(request: BudgetRequest):
     try:
         model = load_models()
-        # Use the real customer pre-treatment population for ranking.
         from causal_ai.data import load_data
         df = load_data()
         scored = score_customers(df, model)
         result = optimize_budget(scored, request.budget, request.contact_cost,
                                  request.contribution_margin)
-        return {"customers_targeted": result["customers_targeted"],
-                "marketing_cost": result["marketing_cost"],
-                "expected_incremental_profit": result["expected_incremental_profit"],
-                "unused_budget": result["unused_budget"]}
+        return {
+            "scenario_customers_selected": result["customers_targeted"],
+            "scenario_marketing_cost": result["marketing_cost"],
+            "modelled_incremental_revenue": result["gross_incremental_revenue"],
+            "modelled_incremental_contribution": result["expected_incremental_contribution"],
+            "modelled_net_contribution": result["expected_net_contribution"],
+            "unused_budget": result["unused_budget"],
+            "policy_validation_status": "exploratory_not_validated",
+            "note": "Scenario arithmetic only; model-policy performance has not been shown to beat the email-everyone baseline."
+        }
     except FileNotFoundError as exc:
         raise HTTPException(503, str(exc))
