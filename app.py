@@ -61,7 +61,7 @@ page = st.sidebar.radio("NAVIGATION", [
 st.sidebar.divider()
 st.sidebar.caption("DATASET · HILLSTROM EMAIL EXPERIMENT")
 st.sidebar.caption("MODEL · TWO-PART T-LEARNER / HURDLE SPEND")
-st.sidebar.caption("VERSION · 1.0.0")
+st.sidebar.caption("VERSION · 1.1.0")
 
 try:
     df = get_data()
@@ -216,12 +216,12 @@ else:
     col1,col2,col3=st.columns(3)
     budget=col1.number_input("Marketing budget ($)",min_value=0.0,value=1000.0,step=100.0)
     cost=col2.number_input("Email cost per customer ($)",min_value=0.0,value=0.05,step=0.01)
-    margin=col3.slider("Contribution margin multiplier",0.1,1.0,1.0,0.05)
+    margin=col3.slider("Contribution margin",0.0,1.0,0.4,0.05, help="Fraction of incremental revenue retained as contribution. For example, 0.40 means 40%. This is a business assumption, not a measured value in the dataset.")
     result=optimize_budget(scored,budget,cost,margin)
     a,b,c,d=st.columns(4)
     a.metric("Customers selected",f"{result['customers_targeted']:,}")
     b.metric("Contact spend",money(result["marketing_cost"]))
-    c.metric("Expected incremental profit",money(result["expected_incremental_profit"]))
+    c.metric("Modelled net contribution",money(result["expected_net_contribution"]))
     d.metric("Unused budget",money(result["unused_budget"]))
     st.subheader("Recommended customer allocation")
     top=result["recommendations"][["recency","history","channel","estimated_incremental_spend",
@@ -229,4 +229,4 @@ else:
     st.dataframe(top,use_container_width=True,hide_index=True)
     st.download_button("Download full allocation",result["recommendations"].to_csv(index=False),
                        "campaign_allocation.csv","text/csv")
-    st.warning("This is a model-based planning estimate, not realized profit. The Hillstrom dataset does not provide per-email costs or product contribution margins; those are editable business assumptions. Equal contact costs make the greedy ranking optimal under the stated budget constraint.")
+    st.warning("This is an exploratory modelled scenario, not realized profit or a validated customer-level recommendation. Net contribution = estimated incremental revenue × assumed contribution margin − assumed email cost. The dataset does not contain actual email costs or product margins. The current holdout has not shown that this targeting policy outperforms emailing everyone.")
