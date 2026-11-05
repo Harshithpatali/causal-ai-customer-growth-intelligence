@@ -1,35 +1,35 @@
 # Causal AI — Customer Growth & Revenue Optimization
 
-An end-to-end causal machine learning and decision-science application built around Kevin Hillstrom's randomized email marketing experiment (64,000 customers; men's email, women's email, and no-email control).
+An end-to-end causal machine learning and decision-science application built around the Kevin Hillstrom randomized email marketing experiment (64,000 customers; men's email, women's email, and no-email control).
 
-## What it does
+## Capabilities
 
-- Analyzes a real randomized marketing experiment.
-- Estimates average treatment effects for conversion, visits, and spend.
-- Trains a two-part T-learner: conversion probability × conditional positive spend, with separate models for treatment and control.
-- Estimates customer-level incremental spend from pre-treatment attributes.
-- Ranks customers for a budget-constrained contact policy.
-- Serves scoring and optimization through FastAPI.
-- Provides a five-page Streamlit decision intelligence dashboard.
+- Randomized experiment analysis and average treatment effect estimation.
+- Two-part T-learner for conversion probability and conditional positive spend.
+- Customer-level incremental-spend estimates using pre-treatment features.
+- Budget-constrained customer ranking and contact allocation.
+- Five-page Streamlit decision-intelligence dashboard.
+- FastAPI scoring and optimization endpoints.
+- Automated tests and model-evaluation report.
 
-## Important interpretation
+## Statistical interpretation
 
-The randomized experiment supports population-level causal estimates. A customer's two potential outcomes cannot both be observed, so customer-level uplift is a model estimate, not a directly observed individual causal effect. The combined treatment pools two different email creatives. Profit outputs use editable contact-cost and contribution-margin assumptions; they are planning estimates, not realized profit.
+The randomized experiment supports population-level causal estimates. Individual customer uplift is model-estimated because both potential outcomes cannot be observed for the same customer. The model-policy inverse-propensity-weighted holdout value is currently below the email-everyone benchmark ($1.14 vs. $1.31 per customer in the evaluated holdout). Therefore, targeting performance is exploratory and is not claimed to outperform a simple baseline. Profit outputs also depend on editable contact-cost and contribution-margin assumptions and are planning estimates, not realized profit.
 
 ## Dataset
 
-The supplied Hillstrom CSV is included at `data/raw/hillstrom.csv`, so the project can train offline after dependencies are installed. If you replace it, preserve the required schema. Dataset description and original challenge: https://blog.minethatdata.com/2008/03/minethatdata-e-mail-analytics-and-data.html
+The project uses the Kevin Hillstrom / MineThatData email marketing experiment. The CSV is included in `data/raw/hillstrom.csv`; no customer identifiers or private credentials are included. The source data has 64,000 rows across three randomized groups. Exact duplicate rows are retained because the source has no unique customer ID and row equality alone does not prove duplicate customer identity.
 
-The file contains 64,000 rows, three randomized arms, and no missing cells. There are 6,562 exact duplicate rows; these are retained because the source has no unique customer ID and row equality alone does not establish duplicate customer identities.
+Original dataset description: https://blog.minethatdata.com/2008/03/minethatdata-e-mail-analytics-and-data.html
 
 ## Local setup
 
-Python 3.10+ (recommended 3.12).
+Python 3.10+ (Python 3.12 recommended).
 
 ```bash
 python -m venv .venv
 # Windows PowerShell:
-.venv\Scripts\Activate.ps1
+.venv\\Scripts\\Activate.ps1
 # macOS/Linux/WSL:
 source .venv/bin/activate
 
@@ -37,13 +37,13 @@ pip install -r requirements.txt
 python scripts/run_pipeline.py
 ```
 
-Start Streamlit:
+Run the Streamlit dashboard:
 
 ```bash
 streamlit run app.py
 ```
 
-Start FastAPI in another terminal:
+Run the FastAPI backend in another terminal:
 
 ```bash
 uvicorn backend.main:app --reload
@@ -64,51 +64,41 @@ API docs: http://127.0.0.1:8000/docs
 pytest -q
 ```
 
-The automated unit tests use small deterministic fixtures and do not substitute for the full Hillstrom data run. Run `python scripts/run_pipeline.py` to train and evaluate on the actual dataset.
+The automated tests use deterministic fixtures. Run `python scripts/run_pipeline.py` to regenerate the full-data model and evaluation artifacts.
 
 ## Deployment
 
-### FastAPI backend on Render
-1. Push this repository to GitHub.
-2. In Render, create a new Blueprint from the repository (the included `render.yaml` defines the API service).
-3. Render installs dependencies, downloads Hillstrom and trains the models during the build.
-4. After deployment, verify `https://YOUR-API.onrender.com/health` and `/docs`.
+### FastAPI on Render
 
-### Streamlit frontend on Streamlit Community Cloud
-1. Create a new app at https://share.streamlit.io/ and connect this GitHub repository.
-2. Set the main file path to `app.py`.
-3. Streamlit installs `requirements.txt` and starts the app.
-4. On first launch, use **Train causal models now**. The app downloads the dataset and trains the local model artifacts.
-5. For a connected frontend/backend deployment, add the Render API URL as a Streamlit secret in a later integration step. The current dashboard performs its analysis locally in the Streamlit process, so it works independently.
+The repository includes `render.yaml`. Create a Render Blueprint from this repository and review the plan before applying it. The current blueprint installs dependencies and trains the model during deployment, so the build may take longer than a simple API deploy.
 
-For a persistent production deployment, store model artifacts in durable object storage or a persistent disk; ephemeral service files can be lost on redeploy. The included Render blueprint trains during deployment, which increases build time.
+### Streamlit Community Cloud
 
-## GitHub
+Create an app at https://share.streamlit.io/, connect this repository, and set the main file to `app.py`. Install dependencies from `requirements.txt`. The current dashboard runs its analysis in the Streamlit process; a later integration step can connect it to the deployed FastAPI service.
 
-```bash
-git init
-git add .
-git commit -m "Build causal AI customer growth platform"
-git branch -M main
-git remote add origin https://github.com/YOUR_USERNAME/causal-ai-customer-growth.git
-git push -u origin main
-```
+For persistent production use, store model artifacts in durable object storage or persistent storage. Do not rely on ephemeral service files surviving redeployments.
 
-## Model and evaluation
+## Evaluation
 
-The current implementation uses a two-part T-learner: logistic regression estimates conversion probability and regularized HistGradientBoostingRegressor models estimate positive spend. Holdout diagnostics include conversion ROC-AUC/average precision, spend RMSE/R², experiment ATE and a Qini-style ranking diagnostic. Spend R² is close to zero on this dataset, so customer-level predictions and ranking are exploratory; benchmark against random targeting and simple business rules, then validate policy value on a fresh randomized holdout before operational use. See `reports/full_evaluation.md` for actual full-dataset results.
+See [`reports/full_evaluation.md`](reports/full_evaluation.md) for experiment estimates, holdout diagnostics, and policy benchmarks. Spend prediction R² is close to zero on this dataset, so individual spend predictions and uplift rankings should be treated as exploratory. A policy should be validated on a fresh randomized holdout and compared with random targeting and simple business-rule baselines before operational use.
 
-## Project layout
+## Project structure
 
 ```text
 app.py                  Streamlit frontend
 backend/main.py         FastAPI service
-src/causal_ai/data.py   Dataset download, load and validation
+src/causal_ai/data.py   Dataset loading and validation
 src/causal_ai/statistics.py
 src/causal_ai/modeling.py
 src/causal_ai/optimization.py
 src/causal_ai/pipeline.py
 scripts/run_pipeline.py
+artifacts/               Fitted model and compact metrics
+reports/                 Dataset profile and evaluation report
 tests/
 configs/
 ```
+
+## License
+
+Dataset rights and terms remain with the original dataset provider. Add a project license only after choosing terms for your own code and verifying compatibility with the dataset terms.
