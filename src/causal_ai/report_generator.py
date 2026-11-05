@@ -44,9 +44,50 @@ def build_report_messages(context):
     user = "Create an executive report from this verified aggregate evidence. Do not calculate new metrics or add unsupported numbers.\n\nVERIFIED_AGGREGATE_EVIDENCE:\n" + evidence
     return [{"role": "system", "content": system}, {"role": "user", "content": user}]
 
-def generate_executive_report(context, api_key, model="llama-3.3-70b-versatile"):
-    if not api_key or not str(api_key).strip(): raise ValueError("A Groq API key is required.")
-    if not model or not str(model).strip(): raise ValueError("A Groq model ID is required.")
+def build_report_chart_data(df, metrics):
+    """Return safe aggregate chart data; never expose customer-level records."""
+    required = {"treatment", "conversion", "spend"}
+    missing = required - set(df.columns)
+    if missing:
+        raise ValueError(f"Cannot build report charts; missing columns: {sorted(missing)}")
+
+    outcomes = []
+    labels = {0: "No email (control)", 1: "Email treatment"}
+    for treatment, group in df.groupby("treatment", sort=True):
+        outcomes.append({
+            "group": labels.get(int(treatment), f"Treatment {treatment}"),
+            "customers": int(len(group)),
+            "conversion_rate": _number(group["conversion"].mean()),
+            "mean_spend": _number(group["spend"].mean()),
+        })
+
+    policy_specs = (
+        ("policy_value_ipw", "Model targeting"),
+        ("all_email_value_ipw", "Email everyone"),
+        ("all_control_value_ipw", "Email nobody"),
+    )
+    policy_values = []
+    for key, label in policy_specs:
+        source = metrics.get(key) or {}
+        value = _number(source.get("value"))
+        if value is None:
+            continue
+        policy_values.append({
+            "strategy": label,
+            "value": value,
+            "ci_lower": _number(source.get("ci_lower")),
+            "ci_upper": _number(source.get("ci_upper")),
+        })
+    return {"outcomes_by_group": outcomes, "holdout_policy_values": policy_values}
+
+
+def generate_executive_report(context, api_key, model="openai/gpt-oss-120b"):
+    """Generate only the narrative; all numeric evidence and charts remain Python-owned."""
+    if not api_key or not str(api_key).strip():
+        raise ValueError("A Groq API key is required.")
+    model = str(model or "").strip()
+    if not model:
+        raise ValueError("A Groq model ID is required.")
     from groq import Groq
     client = Groq(api_key=api_key, timeout=45.0, max_retries=1)
     response = client.chat.completions.create(model=model, messages=build_report_messages(context), temperature=0.2, max_tokens=1800)
