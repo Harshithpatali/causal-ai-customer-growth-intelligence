@@ -387,13 +387,149 @@ else:
     page = st.sidebar.radio(
         "DATA SCIENCE WORKSPACE",
         [
-            "Experiment evidence",
-            "Uplift model diagnostics",
-            "Budget model assumptions",
+            "Dataset overview", "Data quality", "Exploratory data analysis",
+            "Feature analysis", "Correlation analysis", "Statistical analysis",
+            "Experiment evidence", "Uplift model diagnostics", "Budget model assumptions",
         ],
     )
 
-    if page == "Experiment evidence":
+    if page == "Dataset overview":
+        header("DATA SCIENCE / DATA UNDERSTANDING", "Dataset overview", "Inspect the experiment dataset, schema, sample composition, and analytical roles.")
+        numeric_cols = df.select_dtypes(include="number").columns.tolist()
+        categorical_cols = df.select_dtypes(exclude="number").columns.tolist()
+        a,b,c,d,e = st.columns(5)
+        a.metric("Rows", f"{len(df):,}")
+        b.metric("Columns", str(df.shape[1]))
+        c.metric("Numeric", str(len(numeric_cols)))
+        d.metric("Categorical", str(len(categorical_cols)))
+        e.metric("Exact duplicates", f"{df.duplicated().sum():,}")
+        st.caption("Hillstrom / MineThatData historical randomized email experiment (2008). No unique customer identifier is supplied.")
+        st.subheader("Dataset preview")
+        st.dataframe(df.head(30), use_container_width=True, hide_index=True)
+        st.download_button("Download complete analysis dataset", df.to_csv(index=False), "hillstrom_analysis_dataset.csv", "text/csv")
+        definitions = {
+            "recency":"Months since last purchase — pre-treatment numeric feature",
+            "history_segment":"Binned historical spend — pre-treatment categorical feature",
+            "history":"Historical customer spend — pre-treatment numeric feature",
+            "mens":"Prior men's merchandise purchase indicator — pre-treatment binary feature",
+            "womens":"Prior women's merchandise purchase indicator — pre-treatment binary feature",
+            "zip_code":"Geographic ZIP category — pre-treatment categorical feature",
+            "newbie":"New customer indicator — pre-treatment binary feature",
+            "channel":"Historical acquisition channel — pre-treatment categorical feature",
+            "segment":"Original randomized arm: Mens E-Mail, Womens E-Mail, No E-Mail",
+            "treatment":"Derived pooled email assignment (1) versus no email (0)",
+            "treatment_label":"Readable pooled treatment label",
+            "visit":"Whether the customer visited — outcome",
+            "conversion":"Whether the customer purchased — primary binary outcome",
+            "spend":"Observed spend in USD — primary continuous outcome",
+        }
+        schema = pd.DataFrame([{"Column":c,"Dtype":str(df[c].dtype),"Meaning / role":definitions.get(c,"Derived analytical column"),"Unique":int(df[c].nunique(dropna=False)),"Missing":int(df[c].isna().sum())} for c in df.columns])
+        st.subheader("Data dictionary")
+        st.dataframe(schema, use_container_width=True, hide_index=True)
+        arm_counts = df.segment.value_counts().rename_axis("Randomized arm").reset_index(name="Records")
+        st.plotly_chart(px.bar(arm_counts,x="Randomized arm",y="Records",color="Randomized arm",text="Records"),use_container_width=True)
+
+    elif page == "Data quality":
+        header("DATA SCIENCE / VALIDATION", "Data quality audit", "Missingness, duplicates, ranges, binary checks, and outlier screening.")
+        quality = pd.DataFrame([{"Column":c,"Dtype":str(df[c].dtype),"Missing":int(df[c].isna().sum()),"Missing %":df[c].isna().mean()*100,"Unique":int(df[c].nunique(dropna=False))} for c in df.columns])
+        a,b,c = st.columns(3)
+        a.metric("Missing cells", f"{validation['missing_cells']:,}")
+        b.metric("Duplicate rows", f"{validation['duplicate_rows']:,}")
+        c.metric("Schema checks", "Passed" if validation["valid"] else "Failed")
+        st.dataframe(quality.sort_values("Missing %",ascending=False),use_container_width=True,hide_index=True)
+        for issue in validation["issues"]: st.error(issue)
+        st.subheader("Numeric range and IQR screening")
+        records=[]
+        for col in df.select_dtypes(include="number"):
+            x=df[col].dropna(); q1=x.quantile(.25); q3=x.quantile(.75); iqr=q3-q1
+            records.append({"Column":col,"Min":x.min(),"Q1":q1,"Median":x.median(),"Q3":q3,"Max":x.max(),"IQR flagged":int(((x<q1-1.5*iqr)|(x>q3+1.5*iqr)).sum())})
+        st.dataframe(pd.DataFrame(records).round(4),use_container_width=True,hide_index=True)
+        st.warning("IQR flags are investigation candidates, not proof of erroneous records. Spend and history can be strongly right-skewed.")
+        st.write(f"{validation['duplicate_rows']:,} exact duplicate rows are retained transparently. Without a customer ID, identical records cannot safely be assumed to be accidental duplicates.")
+
+    elif page == "Exploratory data analysis":
+        header("DATA SCIENCE / EDA", "Exploratory data analysis", "Univariate, categorical, outcome, and experiment-arm exploration.")
+        tab1,tab2,tab3,tab4=st.tabs(["Numeric distributions","Categorical distributions","Outcomes","Arm comparison"])
+        with tab1:
+            cols=df.select_dtypes(include="number").columns.tolist()
+            var=st.selectbox("Numeric variable",cols,key="eda_num")
+            left,right=st.columns(2)
+            left.plotly_chart(px.histogram(df,x=var,nbins=50,marginal="box",title=f"Distribution: {var}"),use_container_width=True)
+            right.dataframe(df[var].describe().to_frame("Statistics").round(5),use_container_width=True)
+            st.write({"skewness":float(df[var].skew()),"kurtosis":float(df[var].kurtosis())})
+        with tab2:
+            cols=[c for c in df.select_dtypes(exclude="number").columns if c!="treatment_label"]
+            var=st.selectbox("Categorical variable",cols,key="eda_cat")
+            counts=df[var].value_counts(dropna=False).rename_axis(var).reset_index(name="Count")
+            counts["Share"]=counts.Count/len(df)
+            st.plotly_chart(px.bar(counts,x=var,y="Count",color=var,title=f"Frequency: {var}"),use_container_width=True)
+            st.dataframe(counts,use_container_width=True,hide_index=True)
+        with tab3:
+            st.dataframe(df[["visit","conversion","spend"]].describe().round(5),use_container_width=True)
+            st.plotly_chart(px.histogram(df,x="spend",color="treatment_label",nbins=60,barmode="overlay",opacity=.6,title="Spend distribution by treatment"),use_container_width=True)
+            st.caption("Spend is zero-inflated; interpret purchase incidence separately from spend conditional on purchase.")
+        with tab4:
+            outcome=st.selectbox("Outcome",["visit","conversion","spend"],key="eda_arm_outcome")
+            summary=df.groupby("segment")[outcome].agg(["count","mean","std","median"]).reset_index()
+            st.dataframe(summary.round(5),use_container_width=True,hide_index=True)
+            st.plotly_chart(px.bar(summary,x="segment",y="mean",color="segment",title=f"Mean {outcome} by randomized arm"),use_container_width=True)
+
+    elif page == "Feature analysis":
+        from causal_ai.data import FEATURES
+        header("DATA SCIENCE / FEATURE ENGINEERING", "Feature analysis", "Understand model predictors, feature types, leakage boundaries, and observed outcome patterns.")
+        st.warning("Model inputs are pre-treatment covariates only. Treatment assignment and post-treatment outcomes are excluded to prevent leakage.")
+        info=pd.DataFrame([{"Feature":c,"Dtype":str(df[c].dtype),"Unique":int(df[c].nunique()),"Missing":int(df[c].isna().sum()),"Used by model":c in FEATURES,"Role":("Pre-treatment predictor" if c in FEATURES else "Treatment assignment" if c in ["segment","treatment","treatment_label"] else "Post-treatment outcome" if c in ["visit","conversion","spend"] else "Not currently modelled")} for c in df.columns])
+        st.dataframe(info,use_container_width=True,hide_index=True)
+        feature=st.selectbox("Inspect model feature",FEATURES)
+        if pd.api.types.is_numeric_dtype(df[feature]):
+            fig=px.histogram(df,x=feature,color="treatment_label",marginal="box",barmode="overlay",opacity=.6)
+            bins=pd.qcut(df[feature],q=min(10,max(2,df[feature].nunique())),duplicates="drop")
+            grouped=df.assign(feature_bin=bins.astype(str)).groupby("feature_bin",observed=False).agg(records=("conversion","size"),conversion_rate=("conversion","mean"),visit_rate=("visit","mean"),mean_spend=("spend","mean")).reset_index()
+            x_name="feature_bin"
+        else:
+            fig=px.bar(df.groupby([feature,"treatment_label"],observed=False).size().reset_index(name="Records"),x=feature,y="Records",color="treatment_label",barmode="group")
+            grouped=df.groupby(feature,observed=False).agg(records=("conversion","size"),conversion_rate=("conversion","mean"),visit_rate=("visit","mean"),mean_spend=("spend","mean")).reset_index()
+            x_name=feature
+        st.plotly_chart(fig,use_container_width=True)
+        st.subheader("Observed outcomes across feature values")
+        st.dataframe(grouped.round(5),use_container_width=True,hide_index=True)
+        st.plotly_chart(px.bar(grouped,x=x_name,y="conversion_rate",title=f"Conversion rate by {feature}"),use_container_width=True)
+        st.caption("These are descriptive patterns, not causal effects of changing a feature.")
+
+    elif page == "Correlation analysis":
+        header("DATA SCIENCE / DEPENDENCE", "Correlation analysis", "Compare Pearson, Spearman, and Kendall associations. Correlation is not causation.")
+        numeric=df.select_dtypes(include="number")
+        method=st.selectbox("Method",["pearson","spearman","kendall"])
+        corr=numeric.corr(method=method)
+        fig=px.imshow(corr,text_auto=".2f",aspect="auto",color_continuous_scale="RdBu_r",zmin=-1,zmax=1,title=f"{method.title()} correlation matrix")
+        st.plotly_chart(fig,use_container_width=True)
+        st.dataframe(corr.round(4),use_container_width=True)
+        x,y=st.columns(2)
+        xvar=x.selectbox("X variable",numeric.columns,key="corr_x")
+        yvar=y.selectbox("Y variable",numeric.columns,index=min(1,len(numeric.columns)-1),key="corr_y")
+        st.metric(f"{method.title()} correlation",f"{numeric[xvar].corr(numeric[yvar],method=method):.4f}")
+        st.plotly_chart(px.scatter(df,x=xvar,y=yvar,color="treatment_label",opacity=.4,trendline="ols"),use_container_width=True)
+        st.caption("Binary indicators and zero-inflated spend can distort simple linear interpretations; compare rank correlation and inspect scatter plots.")
+
+    elif page == "Statistical analysis":
+        header("DATA SCIENCE / INFERENCE", "Statistical analysis workbench", "Descriptive moments, group summaries, hypothesis tests, p-values, and confidence intervals.")
+        variable=st.selectbox("Variable",["recency","history","visit","conversion","spend"])
+        desc=df[variable].describe().to_frame("Overall").round(5)
+        desc.loc["skewness"]=df[variable].skew()
+        desc.loc["kurtosis"]=df[variable].kurtosis()
+        st.subheader("Descriptive statistics")
+        st.dataframe(desc,use_container_width=True)
+        st.subheader("By randomized treatment")
+        st.dataframe(df.groupby("treatment_label")[variable].agg(["count","mean","std","median","min","max"]).round(5),use_container_width=True)
+        if variable in ["visit","conversion"]:
+            result=two_proportion_test(df[variable],df.treatment)
+            st.write(f"Two-proportion z-test · difference {result['ate']:.5f} · z={result['z_statistic']:.4f} · p={result['p_value']:.6g} · 95% CI [{result['ci_lower']:.5f}, {result['ci_upper']:.5f}]")
+        else:
+            result=mean_difference(df[variable],df.treatment)
+            st.write(f"Welch t-test · difference {result['ate']:.5f} · df={result['degrees_of_freedom']:.2f} · p={result['p_value']:.6g} · 95% CI [{result['ci_lower']:.5f}, {result['ci_upper']:.5f}]")
+        st.caption("Primary comparison pools both email arms versus no email. Subgroup patterns are exploratory unless multiplicity and interactions are handled.")
+
+    elif page == "Experiment evidence":
         header(
             "DATA SCIENCE / CAUSAL INFERENCE",
             "Experiment evidence",
