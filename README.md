@@ -78,7 +78,7 @@ The dataset contains neither delivery costs nor product contribution margins. Th
 
 ## Evaluation snapshot
 
-The reproducible analysis is documented in [the full evaluation report](reports/full_evaluation.md).
+The reproducible analysis is documented in [the full evaluation report](reports/full_evaluation.md). Model purpose, intended use, evaluation, and limitations are summarized in the [model card](reports/model_card.md).
 
 | Holdout policy | IPW estimated spend per customer |
 |---|---:|
@@ -109,6 +109,18 @@ streamlit run app.py
 ```
 
 On first launch, the app downloads the dataset if it is not present. Run the modelling pipeline once to generate `artifacts/uplift_model.joblib` and evaluation metrics. Streamlit Community Cloud can run the pipeline from the dashboard using **Train causal models now** when artifacts are absent.
+
+## Deploy the dashboard
+
+The project is designed for **Streamlit Community Cloud**; no separate backend service is required.
+
+1. Push the repository to GitHub.
+2. Create an app at https://share.streamlit.io/.
+3. Select this repository, the `main` branch, and `app.py` as the main file.
+4. Deploy. The runtime installs only the packages in `requirements.txt`.
+5. On first launch, use **Train causal models now** if model artifacts are not present.
+
+The dataset and trained model artifacts are intentionally not committed. A fresh instance must download the dataset and train the models. Free hosted instances may restart and lose locally generated artifacts; retraining may be necessary. For a persistent public research demo, consider storing versioned model artifacts in durable storage.
 
 ## Tests and quality checks
 
