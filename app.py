@@ -508,7 +508,7 @@ else:
         xvar=x.selectbox("X variable",numeric.columns,key="corr_x")
         yvar=y.selectbox("Y variable",numeric.columns,index=min(1,len(numeric.columns)-1),key="corr_y")
         st.metric(f"{method.title()} correlation",f"{numeric[xvar].corr(numeric[yvar],method=method):.4f}")
-        st.plotly_chart(px.scatter(df,x=xvar,y=yvar,color="treatment_label",opacity=.4,trendline="ols"),use_container_width=True)
+        st.plotly_chart(px.scatter(df,x=xvar,y=yvar,color="treatment_label",opacity=.4),use_container_width=True)
         st.caption("Binary indicators and zero-inflated spend can distort simple linear interpretations; compare rank correlation and inspect scatter plots.")
 
     elif page == "Statistical analysis":
