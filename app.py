@@ -121,7 +121,7 @@ no_email = metrics.get("all_control_value_ipw", {})
 if mode == "Executive view":
     page = st.sidebar.radio(
         "BUSINESS WORKSPACE",
-        ["Executive summary", "Customer insights", "Campaign planner"],
+        ["Executive summary", "Customer insights", "Campaign planner", "AI Business Reports"],
     )
 
     if page == "Executive summary":
@@ -289,7 +289,7 @@ if mode == "Executive view":
                 "text/csv",
             )
 
-    else:
+    elif page == "Campaign planner":
         header(
             "CAMPAIGN PLANNING",
             "Explore a campaign budget",
@@ -341,6 +341,47 @@ if mode == "Executive view":
                 "campaign_scenario_allocation.csv",
                 "text/csv",
             )
+
+    else:
+        from causal_ai.report_generator import build_report_context, generate_executive_report
+        import os
+
+        header("GENERATIVE AI / BUSINESS INTELLIGENCE", "AI Business Reports", "Turn verified experiment evidence into a stakeholder-ready report.")
+        st.write("Python remains the source of truth for all statistical calculations. Groq writes the narrative only.")
+        st.info("Only aggregate experiment metrics and model diagnostics are sent to Groq. Raw customer rows and customer-level scores are not included.")
+        try:
+            groq_api_key = st.secrets.get("GROQ_API_KEY", "")
+        except Exception:
+            groq_api_key = ""
+        groq_api_key = groq_api_key or os.getenv("GROQ_API_KEY", "")
+        try:
+            groq_model = st.secrets.get("GROQ_MODEL", "llama-3.3-70b-versatile")
+        except Exception:
+            groq_model = "llama-3.3-70b-versatile"
+        groq_model = os.getenv("GROQ_MODEL", groq_model)
+        with st.expander("What goes into the report?"):
+            st.markdown("- Randomized experiment size and average treatment effects\\n- Confidence intervals and p-values\\n- Holdout policy values\\n- Model diagnostics and limitations\\n- Business recommendation and next steps")
+        if not groq_api_key:
+            st.warning("Add GROQ_API_KEY in Streamlit Community Cloud → App settings → Secrets to enable report generation.")
+            st.code('GROQ_API_KEY = "your_groq_api_key"\\nGROQ_MODEL = "llama-3.3-70b-versatile"', language="toml")
+        if st.button("Generate Executive Report", type="primary", disabled=not bool(groq_api_key)):
+            context = build_report_context(df, ate_conv, ate_spend, metrics)
+            with st.spinner("Generating the executive report with Groq..."):
+                try:
+                    report = generate_executive_report(context, groq_api_key, groq_model)
+                    st.session_state["causal_ai_executive_report"] = report
+                    st.session_state["causal_ai_report_context"] = context
+                except Exception as exc:
+                    st.error(f"Report generation failed: {exc}")
+                    st.caption("Check the API key, model availability, and network connection.")
+        report = st.session_state.get("causal_ai_executive_report")
+        if report:
+            st.success("Executive report generated.")
+            st.markdown(report)
+            st.download_button("Download Executive Report (.md)", report, "causal_ai_executive_report.md", "text/markdown")
+            with st.expander("Inspect aggregate evidence sent to Groq"):
+                st.json(st.session_state.get("causal_ai_report_context", {}))
+        st.caption("AI-generated narrative for decision support. Verify the statistical evidence before making business decisions.")
 
 else:
     page = st.sidebar.radio(
