@@ -1,68 +1,96 @@
 # Causal AI — Customer Growth & Revenue Optimization
 
-An end-to-end causal machine-learning and decision-science application built around the Kevin Hillstrom / MineThatData randomized email marketing experiment. It combines experiment analysis, customer-level uplift modelling, holdout policy evaluation, and budget-constrained planning in a five-page Streamlit dashboard with a FastAPI service.
+A **data-science research project** using the Kevin Hillstrom / MineThatData randomized email experiment. The project moves from randomized experiment analysis to heterogeneous treatment-effect modelling, holdout policy evaluation, and budget-scenario sensitivity analysis.
 
-> **Research status:** the randomized experiment shows a positive average effect for the pooled email treatment, but the current uplift targeting policy has not demonstrated that it outperforms emailing everyone. Spend prediction R² is close to zero on the holdout. Customer-level rankings and contribution scenarios are exploratory—not validated production recommendations.
+The deliverable is a five-page **Streamlit research dashboard**. It is intentionally Python- and statistics-focused: no separate API service or frontend framework is required.
 
-## Product modules
+> **Research conclusion:** Email has a positive average effect in this experiment. The current customer-level uplift model has weak outcome prediction (holdout spend R² is close to zero), and its targeting policy has **not demonstrated superiority** to emailing everyone. Individual scores and budget allocations are exploratory analyses, not validated causal effects or production recommendations.
 
-1. **Executive Overview** — experiment-arm outcomes and evidence hierarchy.
-2. **Customer Intelligence** — pre-treatment customer attributes and model-implied outcomes.
-3. **Experimentation Lab** — average treatment effects, confidence intervals, and statistical tests.
-4. **Uplift Intelligence** — two-part T-learner scores, inverse-propensity-weighted (IPW) holdout policy values, and cumulative-gain diagnostic.
-5. **Budget Scenario Optimizer** — equal-cost contact allocation under editable cost and contribution-margin assumptions.
+## Research questions
+
+1. What is the average effect of the pooled email treatment on visits, conversion, and spend?
+2. How do the two email creatives compare with the no-email control?
+3. Can pre-treatment customer attributes predict expected spend under each treatment condition?
+4. Does model-based targeting improve on simple policies when evaluated on a randomized holdout?
+5. How sensitive is a budget allocation scenario to contact cost and contribution-margin assumptions?
+
+## Dashboard
+
+| Page | Data-science purpose |
+|---|---|
+| Executive Overview | Cohort profile, randomized-arm outcomes, average treatment effects |
+| Customer Intelligence | Pre-treatment covariates and model-implied potential outcomes |
+| Experimentation Lab | Two-proportion inference, Welch's t-test, confidence intervals |
+| Uplift Intelligence | Two-part T-learner, holdout IPW policy values, Qini-style diagnostic |
+| Budget Scenario Optimizer | Sensitivity to assumed contact cost, contribution margin, and budget |
 
 ## Dataset
 
-The project uses the 64,000-row Kevin Hillstrom email marketing experiment, with three randomized arms: Mens E-Mail, Womens E-Mail, and No E-Mail. The raw CSV is **not committed** to this repository. On first run, the application downloads it to `data/raw/hillstrom.csv`; see [`data/README.md`](data/README.md) for details. Confirm upstream dataset redistribution terms before mirroring it elsewhere.
+- **Source:** Kevin Hillstrom / MineThatData Email Analytics Challenge (2008).
+- **Sample:** 64,000 randomized observations across Mens E-Mail, Womens E-Mail, and No E-Mail.
+- **Treatment definition:** the primary analysis pools the two email creatives and compares the observed email mixture with no email.
+- **Features:** recency, history segment, historical spend, prior mens/womens purchases, ZIP category, new-customer flag, and channel.
+- **Outcomes:** visit, conversion, and spend.
 
-The dataset has no unique customer identifier. It contains 6,562 exact duplicate rows, which are retained: identical row values do not prove that two records belong to the same customer.
+The raw CSV is downloaded on first run to `data/raw/hillstrom.csv`; it is not committed to Git. The dataset has no unique customer identifier. Exact duplicate rows are retained because row equality alone does not establish duplicate customer identity. Review the upstream data terms before redistributing the dataset.
 
-## Methodology
+Dataset source description: https://blog.minethatdata.com/2008/03/minethatdata-e-mail-analytics-and-data.html
 
-### Randomized experiment
+## Statistical design
 
-The primary estimand pools both email creatives into one treatment group and compares that treatment mixture with no email. Binary outcomes use a two-proportion z test with a pooled null standard error and an unpooled confidence interval. Spend uses Welch's two-sample t test with a Satterthwaite confidence interval.
+### Average treatment effects
 
-### Uplift model
+- Binary outcomes use a two-proportion z-test with a pooled null standard error and an unpooled Wald confidence interval.
+- Spend uses Welch's independent two-sample t-test and a Satterthwaite confidence interval.
+- The primary estimand is email-mixture minus no-email. Creative-specific comparisons are shown separately to make treatment heterogeneity visible.
+- Reported p-values are unadjusted; exploratory subgroup comparisons should not be interpreted as confirmatory tests.
 
-A two-part T-learner is trained separately in the email and control groups:
-- Logistic regression estimates conversion probability under each action.
-- Regularized gradient-boosting regressors estimate positive spend conditional on conversion.
-- Expected spend is estimated as `P(conversion) × E(spend | conversion)`.
-- Estimated incremental spend is expected spend with email minus expected spend without email.
+### Heterogeneous treatment-effect model
 
-Only pre-treatment features are used: `recency`, `history_segment`, `history`, `mens`, `womens`, `zip_code`, `newbie`, and `channel`.
+A two-part T-learner is fitted separately in the pooled-email and no-email groups:
 
-### Policy evaluation
+1. Logistic regression estimates conversion probability under each treatment condition.
+2. Regularized gradient-boosting regressors estimate positive spend conditional on conversion.
+3. Expected spend is estimated as (P(\text{conversion}) \times E(\text{spend}\mid\text{conversion})).
+4. Model-implied uplift is expected spend with email minus expected spend without email.
 
-A 75/25 stratified train/holdout split is used. The model policy is selected using training data and evaluated on the randomized holdout with the known 2/3 email assignment propensity. The report includes IPW values for the model policy, emailing everyone, and emailing nobody, plus a paired IPW comparison of model targeting against emailing everyone.
+Only pre-treatment covariates are used. Outcomes are not used as model features.
+
+### Holdout policy evaluation
+
+- A stratified 75/25 train/holdout split is used.
+- The targeting threshold is selected using training data.
+- Policy values are estimated on the randomized holdout using inverse-propensity weighting (IPW), with the known 2/3 pooled-email assignment probability.
+- The model policy is compared with emailing everyone and emailing nobody. The paired policy contrast and confidence interval are reported.
+- Qini/AUUC is presented as an exploratory ranking diagnostic, not as evidence of profitability.
 
 ### Budget scenario
 
+The scenario calculation is:
+
 ```text
-modelled net contribution per contacted customer
-  = estimated incremental revenue × contribution margin fraction
-    − email contact cost
+modelled net contribution
+  = estimated incremental revenue × assumed contribution margin
+    − assumed email contact cost
 ```
 
-With equal contact costs, selecting the highest positive net-contribution scores up to the budget is optimal for the stated point estimates. This is **scenario arithmetic**, not realized profit. The dataset does not contain email delivery costs or product contribution margins, and model scores are not sufficiently validated for a live policy.
+The dataset contains neither delivery costs nor product contribution margins. These inputs are user assumptions. Equal contact costs make the ranking optimal for the stated point estimates, but **do not make the model's causal estimates valid**.
 
-## Current evaluation snapshot
+## Evaluation snapshot
 
-See [`reports/full_evaluation.md`](reports/full_evaluation.md) for the reproducible metrics and limitations. In the current seeded holdout run:
+The reproducible analysis is documented in [the full evaluation report](reports/full_evaluation.md).
 
-| Holdout policy | IPW spend estimate per customer |
+| Holdout policy | IPW estimated spend per customer |
 |---|---:|
 | Model policy | $1.127 |
 | Email everyone | $1.310 |
 | Email nobody | $0.671 |
 
-The paired model-policy minus email-everyone estimate is **−$0.183 per customer** (95% CI: −$0.444 to +$0.077). The interval includes zero; this does not establish that the model policy is better or worse than emailing everyone.
+The paired model-policy minus email-everyone estimate is **−$0.183 per customer** (95% CI: −$0.444 to +$0.077). The interval includes zero. This experiment does not establish that the model policy is better or worse than emailing everyone.
 
-Spend prediction R² is approximately 0.002 in control and 0.0002 in treatment. Treat customer-level uplift as exploratory. A new randomized policy experiment is needed before claiming targeting performance.
+Holdout spend R² is approximately 0.002 for control and 0.0002 for treatment. The model explains very little individual spend variation. Customer-level uplift scores must therefore remain exploratory.
 
-## Local setup
+## Reproducibility and setup
 
 Python 3.10+ (Python 3.12 recommended).
 
@@ -70,70 +98,52 @@ Python 3.10+ (Python 3.12 recommended).
 python -m venv .venv
 
 # Windows PowerShell
-.venv\\Scripts\\Activate.ps1
+.venv\Scripts\Activate.ps1
 
 # macOS / Linux / WSL
 source .venv/bin/activate
 
 pip install -r requirements.txt
 python scripts/run_pipeline.py
-pytest -q
 streamlit run app.py
 ```
 
-Start the FastAPI service in another terminal:
+On first launch, the app downloads the dataset if it is not present. Run the modelling pipeline once to generate `artifacts/uplift_model.joblib` and evaluation metrics. Streamlit Community Cloud can run the pipeline from the dashboard using **Train causal models now** when artifacts are absent.
 
-```bash
-uvicorn backend.main:app --reload
-```
-
-API documentation: http://127.0.0.1:8000/docs
-
-## API endpoints
-
-- `GET /health`
-- `GET /metrics`
-- `POST /predict`
-- `POST /optimize`
-
-For `/optimize`, `contribution_margin` is a fraction from `0` to `1` (for example, `0.40` means 40%).
-
-## Tests
+## Tests and quality checks
 
 ```bash
 pytest -q
+python -m compileall -q app.py src scripts tests
 ```
 
-GitHub Actions runs compilation and the automated test suite on pushes and pull requests. The full dataset training run is separate from CI.
+GitHub Actions runs compilation and the automated unit tests. The full 64,000-row model pipeline is kept out of CI to keep checks fast and deterministic.
 
-## Deployment
-
-### FastAPI on Render
-
-The repository contains `render.yaml`. Create a Render Blueprint and review planned resources before applying it. The build downloads the public dataset if needed and trains the models; it may take longer than a simple API build.
-
-### Streamlit Community Cloud
-
-Create an app at https://share.streamlit.io/, connect this repository, and set the main file to `app.py`. Streamlit installs `requirements.txt`. On a fresh deployment, use the dashboard's **Train causal models now** action to download data and create model artifacts.
-
-For persistent production use, store model artifacts in durable object storage or a persistent disk. The dashboard currently scores in its own Streamlit process; connecting the frontend to the deployed FastAPI service can be a subsequent integration step.
-
-## Project structure
+## Repository structure
 
 ```text
-app.py                  Streamlit frontend
-backend/main.py         FastAPI service
-src/causal_ai/data.py   Dataset download, load and validation
-src/causal_ai/statistics.py
-src/causal_ai/modeling.py
+app.py                       Streamlit research dashboard
+src/causal_ai/data.py        Dataset loading and validation
+src/causal_ai/statistics.py  A/B test estimators and inference
+src/causal_ai/modeling.py    T-learner, diagnostics, IPW evaluation
 src/causal_ai/optimization.py
-src/causal_ai/pipeline.py
-scripts/run_pipeline.py
-reports/                 Evaluation report and data profile
-tests/                   Automated tests
-configs/                 Project configuration
+                             Budget scenario arithmetic
+src/causal_ai/pipeline.py    Reproducible analysis pipeline
+scripts/run_pipeline.py     One-command model training
+reports/                     Evaluation report and data profile
+tests/                       Statistical and modelling tests
+configs/                      Reproducible analysis assumptions
 ```
 
-## Data and licensing note
+## Limitations and next research steps
 
-The raw Hillstrom data is downloaded from an upstream source and is not committed here. Dataset terms remain with the original provider. This repository does not add a license for the dataset or project code; choose a code license separately after reviewing the source-data terms.
+- Estimate creative-specific treatment effects rather than relying only on a pooled treatment.
+- Repeat the train/holdout evaluation across random seeds and report uncertainty across splits.
+- Compare uplift ranking with random, recency-based, and history-based baselines.
+- Evaluate subgroup calibration and policy-value stability.
+- Conduct a new randomized policy experiment before using customer-level targeting operationally.
+- Add pre-specified sensitivity analyses and multiplicity control for confirmatory subgroup work.
+
+## Scope
+
+This repository is an educational and analytical research project. It is not a live marketing automation system, a causal-effect oracle, or a validated profit forecasting product.
