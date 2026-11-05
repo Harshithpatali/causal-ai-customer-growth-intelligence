@@ -180,35 +180,73 @@ elif page.startswith("03"):
     st.warning("The combined treatment pools two different email creatives. Interpret the estimate as the average effect of this mixture of email treatments versus no email.")
 
 elif page.startswith("04"):
-    header("UPLIFT INTELLIGENCE / MODEL INSIGHTS", "Find customers whose behaviour may change",
-           "Estimate the difference between predicted spend with email and predicted spend without email.")
-    c1,c2,c3 = st.columns(3)
-    c1.metric("Mean predicted uplift",money(scored.estimated_incremental_spend.mean()))
-    c2.metric("Positive uplift",f"{(scored.estimated_incremental_spend>0).mean():.1%}")
-    c3.metric("Holdout Qini-style score",f"{metrics.get('qini',0):,.1f}")
+    header(
+        "UPLIFT INTELLIGENCE / MODEL INSIGHTS",
+        "Customer-level uplift diagnostics",
+        "Compare model-implied outcomes with policy values estimated on a randomized holdout.",
+    )
+    comparison = metrics.get("policy_vs_all_email_ipw", {})
+    c1, c2, c3 = st.columns(3)
+    c1.metric("Mean model-implied uplift", money(scored.estimated_incremental_spend.mean()))
+    c2.metric("Positive model-implied uplift", f"{(scored.estimated_incremental_spend > 0).mean():.1%}")
+    diff = comparison.get("difference")
+    c3.metric("Policy vs email-everyone", money(diff) if diff is not None else "N/A")
+
     if metrics.get("policy_value_ipw"):
         st.subheader("Randomized holdout policy benchmark")
-        p1,p2,p3=st.columns(3)
-        p1.metric("Model policy IPW value",money(metrics["policy_value_ipw"]["value"]))
-        p2.metric("Email everyone",money(metrics["all_email_value_ipw"]["value"]))
-        p3.metric("Email nobody",money(metrics["all_control_value_ipw"]["value"]))
-        st.caption("Inverse-propensity-weighted estimated spend per customer on the randomized holdout. The model policy must beat simple baselines before it can be considered useful.")
-    fig=px.histogram(scored,x="estimated_incremental_spend",nbins=60,
-                     color_discrete_sequence=["#36d9b5"])
-    fig.add_vline(x=0,line_dash="dash",line_color="#ff9d6c")
-    fig.update_layout(template="plotly_dark",paper_bgcolor="rgba(0,0,0,0)",plot_bgcolor="rgba(0,0,0,0)")
-    st.plotly_chart(fig,use_container_width=True)
-    if metrics.get("qini_fraction"):
-        qfig=go.Figure()
-        qfig.add_trace(go.Scatter(x=metrics["qini_fraction"],y=metrics["qini_gain"],
-                                  mode="lines",name="Uplift ranking",line=dict(color="#36d9b5",width=3)))
-        qfig.update_layout(title="Holdout cumulative uplift ranking diagnostic",
-                           xaxis_title="Fraction of ranked test customers",
-                           yaxis_title="Cumulative incremental outcome proxy",
-                           template="plotly_dark",paper_bgcolor="rgba(0,0,0,0)",plot_bgcolor="rgba(0,0,0,0)")
-        st.plotly_chart(qfig,use_container_width=True)
-    st.markdown("**Model:** Two-part T-learner. Separate logistic regression models estimate conversion probability by treatment arm; regularized gradient-boosting models estimate spend conditional on conversion. Expected spend is their product. This is a baseline, not proof of individual-level causal effects.")
-    st.caption("Spend is sparse and zero-inflated in this dataset; Qini/AUUC rankings are noisy. Validate policy value on randomized holdout data and compare with simple targeting baselines.")
+        p1, p2, p3 = st.columns(3)
+        p1.metric("Model policy", money(metrics["policy_value_ipw"]["value"]))
+        p2.metric("Email everyone", money(metrics["all_email_value_ipw"]["value"]))
+        p3.metric("Email nobody", money(metrics["all_control_value_ipw"]["value"]))
+        st.caption("Inverse-propensity-weighted estimated spend per customer on the independent randomized holdout.")
+        if comparison:
+            st.warning(
+                "Model policy minus email-everyone: "
+                f"{money(comparison['difference'])} per customer "
+                f"(95% CI {money(comparison['ci_lower'])} to {money(comparison['ci_upper'])}). "
+                "The model policy has not demonstrated superiority to emailing everyone."
+            )
+
+    left, right = st.columns([1, 1.15])
+    with left:
+        fig = px.histogram(
+            scored, x="estimated_incremental_spend", nbins=60,
+            color_discrete_sequence=["#36d9b5"],
+            labels={"estimated_incremental_spend": "Estimated incremental spend ($)"},
+        )
+        fig.add_vline(x=0, line_dash="dash", line_color="#ff9d6c")
+        fig.update_layout(template="plotly_dark", paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)")
+        st.plotly_chart(fig, use_container_width=True)
+    with right:
+        if metrics.get("qini_fraction"):
+            qfig = go.Figure()
+            qfig.add_trace(go.Scatter(
+                x=metrics["qini_fraction"], y=metrics["qini_gain"],
+                mode="lines", name="Uplift ranking",
+            ))
+            if metrics.get("qini_random_gain"):
+                qfig.add_trace(go.Scatter(
+                    x=metrics["qini_fraction"], y=metrics["qini_random_gain"],
+                    mode="lines", name="Random ranking reference",
+                    line=dict(dash="dash"),
+                ))
+            qfig.update_layout(
+                title="Holdout IPW cumulative uplift gain",
+                xaxis_title="Fraction of holdout customers ranked",
+                yaxis_title="Cumulative estimated incremental spend ($)",
+                template="plotly_dark", paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)",
+            )
+            st.plotly_chart(qfig, use_container_width=True)
+
+    st.markdown(
+        "**Model:** two-part T-learner. Separate logistic regressions estimate conversion probability "
+        "under each treatment condition; regularized gradient-boosting models estimate spend conditional "
+        "on positive spend. Expected spend = conversion probability × conditional positive spend."
+    )
+    st.caption(
+        "Spend is sparse and zero-inflated, with near-zero holdout R². Individual uplift rankings and "
+        "Qini/AUUC are exploratory diagnostics—not validated customer-level causal effects or profit forecasts."
+    )
 
 else:
     header("DECISION SCIENCE / RESOURCE ALLOCATION", "Profit Optimization",
