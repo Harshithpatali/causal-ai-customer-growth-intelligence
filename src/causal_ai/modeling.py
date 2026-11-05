@@ -8,12 +8,13 @@ from sklearn.compose import ColumnTransformer
 from sklearn.preprocessing import OneHotEncoder, StandardScaler
 from sklearn.impute import SimpleImputer
 from sklearn.pipeline import Pipeline
-from sklearn.ensemble import HistGradientBoostingRegressor, RandomForestRegressor
+from sklearn.ensemble import HistGradientBoostingRegressor
 from sklearn.linear_model import LogisticRegression
 from sklearn.model_selection import train_test_split
 from sklearn.metrics import mean_squared_error, r2_score, roc_auc_score, average_precision_score
 from .data import FEATURES
 from .statistics import mean_difference
+from scipy.integrate import trapezoid
 
 def _make_preprocessor():
     numeric = ["recency", "history", "mens", "womens", "newbie"]
@@ -48,28 +49,47 @@ def _expected_spend(classifier, regressor, X):
     conditional = np.maximum(0, regressor.predict(X))
     return probability * conditional, probability, conditional
 
-def qini_curve(y, treatment, uplift):
-    """Cumulative treated-vs-control outcome-rate ranking diagnostic."""
-    frame = pd.DataFrame({"y": np.asarray(y), "t": np.asarray(treatment),
-                          "u": np.asarray(uplift)}).sort_values("u", ascending=False)
-    nt, nc = (frame.t == 1).sum(), (frame.t == 0).sum()
-    if nt == 0 or nc == 0:
-        return {"fraction": [0,1], "gain": [0,0], "qini": 0.0, "auuc": 0.0}
-    cum_t = (frame.y * (frame.t == 1)).cumsum()
-    cum_c = (frame.y * (frame.t == 0)).cumsum()
-    seen_t = (frame.t == 1).cumsum()
-    seen_c = (frame.t == 0).cumsum()
-    rate_t = np.divide(cum_t, seen_t, out=np.zeros(len(frame)), where=seen_t.to_numpy()>0)
-    rate_c = np.divide(cum_c, seen_c, out=np.zeros(len(frame)), where=seen_c.to_numpy()>0)
-    gain = (rate_t-rate_c) * np.arange(1, len(frame)+1)
-    frac = np.arange(1, len(frame)+1)/len(frame)
-    gain = np.nan_to_num(gain, nan=0.0, posinf=0.0, neginf=0.0)
-    baseline = np.linspace(0, float(gain[-1]), len(gain))
-    qini = float(np.trapezoid(gain-baseline, frac))
-    auuc = float(np.trapezoid(gain, frac))
-    return {"fraction": [0.0]+frac.tolist(), "gain": [0.0]+gain.tolist(),
-            "qini": qini, "auuc": auuc}
+def qini_curve(y, treatment, uplift, propensity=2.0/3.0):
+    """IPW cumulative uplift-gain diagnostic on a randomized evaluation sample.
 
+    The Horvitz-Thompson pseudo-outcome is A*Y/e - (1-A)*Y/(1-e).
+    This is an exploratory ranking diagnostic, not a profit estimate.
+    """
+    y = np.asarray(y, dtype=float)
+    t = np.asarray(treatment, dtype=int)
+    u = np.asarray(uplift, dtype=float)
+    p = float(propensity)
+    if not 0 < p < 1:
+        raise ValueError("Treatment propensity must be between 0 and 1")
+    if y.ndim != 1 or t.ndim != 1 or u.ndim != 1 or not (len(y) == len(t) == len(u)):
+        raise ValueError("y, treatment and uplift must be one-dimensional arrays of equal length")
+    if len(y) == 0:
+        return {"fraction": [0.0, 1.0], "gain": [0.0, 0.0],
+                "random_gain": [0.0, 0.0], "qini": 0.0, "auuc": 0.0}
+    if not np.isfinite(y).all() or not np.isfinite(u).all():
+        raise ValueError("y and uplift must contain only finite values")
+    if not set(np.unique(t)).issubset({0, 1}):
+        raise ValueError("Treatment must be binary (0/1)")
+
+    order = np.argsort(-u, kind="stable")
+    y_sorted, t_sorted = y[order], t[order]
+    pseudo = (t_sorted * y_sorted / p) - ((1 - t_sorted) * y_sorted / (1 - p))
+    gain = np.cumsum(pseudo)
+    fraction = np.arange(1, len(y) + 1, dtype=float) / len(y)
+    random_gain = fraction * gain[-1]
+    x_full = np.concatenate(([0.0], fraction))
+    gain_full = np.concatenate(([0.0], gain))
+    random_full = np.concatenate(([0.0], random_gain))
+    qini = float(trapezoid(gain_full - random_full, x_full))
+    auuc = float(trapezoid(gain_full, x_full))
+    step = max(1, len(x_full) // 500)
+    keep = np.unique(np.concatenate((np.arange(0, len(x_full), step), [len(x_full) - 1])))
+    return {
+        "fraction": x_full[keep].astype(float).tolist(),
+        "gain": gain_full[keep].astype(float).tolist(),
+        "random_gain": random_full[keep].astype(float).tolist(),
+        "qini": qini, "auuc": auuc, "total_ipw_gain": float(gain[-1]),
+    }
 
 def evaluate_policy_ipw(y, treatment, policy, propensity):
     """Evaluate a pre-specified treatment policy on randomized holdout data using IPW."""
@@ -94,6 +114,40 @@ def evaluate_policy_ipw(y, treatment, policy, propensity):
         "ci_upper": value + 1.96*se,
         "matched_fraction": float(selected.mean()),
         "n": int(len(y))
+    }
+
+
+
+def compare_policy_ipw(y, treatment, policy_a, policy_b, propensity):
+    """Paired IPW contrast between two fixed policies on the same holdout rows."""
+    y = np.asarray(y, dtype=float)
+    t = np.asarray(treatment, dtype=int)
+    a = np.asarray(policy_a, dtype=int)
+    b = np.asarray(policy_b, dtype=int)
+    if not (y.ndim == t.ndim == a.ndim == b.ndim == 1 and len(y) == len(t) == len(a) == len(b)):
+        raise ValueError("All policy comparison arrays must be one-dimensional and have equal lengths")
+    if len(y) < 2:
+        raise ValueError("At least two holdout observations are required")
+    p = float(propensity)
+    if not 0 < p < 1:
+        raise ValueError("Treatment propensity must be between 0 and 1")
+    if not np.isfinite(y).all():
+        raise ValueError("Outcome must contain only finite values")
+    if not set(np.unique(t)).issubset({0, 1}) or not set(np.unique(a)).issubset({0, 1}) or not set(np.unique(b)).issubset({0, 1}):
+        raise ValueError("Treatment and policies must be binary (0/1)")
+
+    def contribution(policy):
+        matched = t == policy
+        probability = np.where(policy == 1, p, 1 - p)
+        return matched.astype(float) * y / probability
+
+    delta = contribution(a) - contribution(b)
+    estimate = float(delta.mean())
+    se = float(delta.std(ddof=1) / np.sqrt(len(delta)))
+    return {
+        "difference": estimate, "standard_error": se,
+        "ci_lower": estimate - 1.96 * se, "ci_upper": estimate + 1.96 * se,
+        "n": int(len(delta)),
     }
 
 def train_uplift(df, artifact_dir="artifacts", seed=42):
@@ -127,7 +181,7 @@ def train_uplift(df, artifact_dir="artifacts", seed=42):
     mu0, p0, conditional0 = _expected_spend(control_classifier, control_spend, X_test)
     mu1, p1, conditional1 = _expected_spend(treated_classifier, treated_spend, X_test)
     uplift = mu1-mu0
-    curve = qini_curve(y_test, t_test, uplift)
+    curve = qini_curve(y_test, t_test, uplift, propensity=treatment_propensity)
     ate = mean_difference(y_test, t_test)
     # The experiment randomized customers approximately 2:1 into pooled email vs no email
     # because two email creatives each had a 1/3 allocation.
@@ -138,6 +192,9 @@ def train_uplift(df, artifact_dir="artifacts", seed=42):
                                           treatment_propensity)
     all_control_value = evaluate_policy_ipw(y_test, t_test, np.zeros(len(t_test), dtype=int),
                                             treatment_propensity)
+    policy_vs_all_email = compare_policy_ipw(
+        y_test, t_test, policy, np.ones(len(t_test), dtype=int), treatment_propensity
+    )
 
     predictions = data.iloc[idx_test][FEATURES].copy()
     predictions["observed_treatment"] = t_test
@@ -191,14 +248,17 @@ def train_uplift(df, artifact_dir="artifacts", seed=42):
         "policy_value_ipw": policy_value,
         "all_email_value_ipw": all_email_value,
         "all_control_value_ipw": all_control_value,
+        "policy_vs_all_email_ipw": policy_vs_all_email,
         "policy_incremental_value_vs_all_control": float(policy_value["value"]-all_control_value["value"]),
         "qini": curve["qini"], "auuc": curve["auuc"],
+        "qini_total_ipw_gain": curve.get("total_ipw_gain"),
+        "qini_random_gain": curve["random_gain"],
         "qini_fraction": curve["fraction"], "qini_gain": curve["gain"],
         "mean_predicted_uplift": float(np.mean(uplift)),
         "positive_uplift_share": float(np.mean(uplift > 0)),
         "outcome": "spend", "treatment": "email vs no email",
         "model_type": "two_part_t_learner",
-        "note": "Expected spend = P(conversion) × E(spend | conversion). Holdout ranking metrics are diagnostics, not proof of policy value."
+        "note": "Expected spend = P(conversion) × E(spend | conversion). Policy values use a randomized holdout; model policy has not demonstrated superiority to email-everyone. Qini is an exploratory IPW cumulative-gain diagnostic."
     }
     (artifact_dir/"metrics.json").write_text(json.dumps(metrics, indent=2))
     return metrics
