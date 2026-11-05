@@ -181,11 +181,11 @@ def train_uplift(df, artifact_dir="artifacts", seed=42):
     mu0, p0, conditional0 = _expected_spend(control_classifier, control_spend, X_test)
     mu1, p1, conditional1 = _expected_spend(treated_classifier, treated_spend, X_test)
     uplift = mu1-mu0
-    curve = qini_curve(y_test, t_test, uplift, propensity=treatment_propensity)
-    ate = mean_difference(y_test, t_test)
     # The experiment randomized customers approximately 2:1 into pooled email vs no email
     # because two email creatives each had a 1/3 allocation.
     treatment_propensity = 2.0/3.0
+    curve = qini_curve(y_test, t_test, uplift, propensity=treatment_propensity)
+    ate = mean_difference(y_test, t_test)
     policy = (uplift > 0.05).astype(int)
     policy_value = evaluate_policy_ipw(y_test, t_test, policy, treatment_propensity)
     all_email_value = evaluate_policy_ipw(y_test, t_test, np.ones(len(t_test), dtype=int),
@@ -217,15 +217,6 @@ def train_uplift(df, artifact_dir="artifacts", seed=42):
         "features": FEATURES, "seed": seed, "model_type": "two_part_t_learner"
     }, artifact_dir/"uplift_model.joblib")
 
-    def arm_metrics(mask, pred, classifier):
-        actual = y_test[mask]
-        return {
-            "spend_rmse": float(np.sqrt(mean_squared_error(actual, pred[mask]))),
-            "spend_r2": float(r2_score(actual, pred[mask])),
-            "conversion_roc_auc": float(roc_auc_score(conversion[idx_test][mask],
-                                                       classifier.predict_proba(X_test.iloc[np.where(mask)[0]])[:,1]))
-                if len(np.unique(conversion[idx_test][mask])) > 1 else None
-        }
     control_test, treated_test = t_test == 0, t_test == 1
     def safe_auc(y_true, y_score):
         return float(roc_auc_score(y_true, y_score)) if len(np.unique(y_true)) > 1 else None
