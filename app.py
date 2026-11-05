@@ -1,73 +1,92 @@
 from pathlib import Path
-import sys, json
-sys.path.insert(0, str(Path(__file__).resolve().parent/"src"))
+import json
+import sys
+
+sys.path.insert(0, str(Path(__file__).resolve().parent / "src"))
+
 import pandas as pd
 import plotly.express as px
 import plotly.graph_objects as go
 import streamlit as st
-from causal_ai.data import load_data, validate_data, FEATURES
+
+from causal_ai.data import load_data, validate_data
 from causal_ai.modeling import load_models, score_customers
 from causal_ai.statistics import two_proportion_test, mean_difference
 from causal_ai.optimization import optimize_budget
 from causal_ai.pipeline import run_pipeline
 
-st.set_page_config(page_title="Causal AI | Growth Intelligence", page_icon="◈",
-                   layout="wide", initial_sidebar_state="expanded")
+
+st.set_page_config(
+    page_title="Causal AI | Customer Growth",
+    page_icon="◈",
+    layout="wide",
+    initial_sidebar_state="expanded",
+)
 
 st.markdown("""
 <style>
 @import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Space+Grotesk:wght@500;600;700&display=swap');
 html, body, [class*="css"] {font-family:'DM Sans',sans-serif;}
-.stApp {background: radial-gradient(circle at 15% 0%, #13243b 0, #0a1220 36%, #080e18 100%); color:#e8eef8;}
-section[data-testid="stSidebar"] {background:#0c1727; border-right:1px solid #20324a;}
-h1,h2,h3 {font-family:'Space Grotesk',sans-serif; color:#f3f7ff;}
-div[data-testid="stMetric"] {background:linear-gradient(145deg,#14243a,#101b2d); border:1px solid #263b56; padding:18px; border-radius:14px;}
+.stApp {background:radial-gradient(circle at 15% 0%,#13243b 0,#0a1220 36%,#080e18 100%);color:#e8eef8;}
+section[data-testid="stSidebar"] {background:#0c1727;border-right:1px solid #20324a;}
+h1,h2,h3 {font-family:'Space Grotesk',sans-serif;color:#f3f7ff;}
+div[data-testid="stMetric"] {background:linear-gradient(145deg,#14243a,#101b2d);border:1px solid #263b56;padding:16px;border-radius:14px;}
 div[data-testid="stMetricLabel"] {color:#9eb2ca;}
 div[data-testid="stMetricValue"] {color:#f3f7ff;}
-.block-container {padding-top:2rem; max-width:1500px;}
+.block-container {padding-top:2rem;max-width:1500px;}
 div.stButton>button {background:#39d6b4;color:#07131d;border:0;border-radius:9px;font-weight:700;}
-.small-muted {color:#91a5bd;font-size:0.88rem;}
 .hero {padding:26px 30px;border-radius:18px;background:linear-gradient(115deg,#142b43,#102033 65%,#153a43);border:1px solid #294b63;margin-bottom:22px;}
 .hero-kicker {color:#51dfc0;letter-spacing:2px;font-size:11px;font-weight:700;}
 .hero-title {font-family:'Space Grotesk';font-size:34px;font-weight:700;color:#f5f8ff;margin:6px 0;}
 .hero-sub {color:#b4c5d8;font-size:14px;}
+.business-callout {padding:18px 20px;border:1px solid #31536a;border-radius:14px;background:#10263a;margin:10px 0 18px 0;}
+.muted {color:#a9bbce;font-size:0.9rem;}
 div[data-testid="stDataFrame"] {border:1px solid #263b56;border-radius:12px;}
 </style>
 """, unsafe_allow_html=True)
+
 
 @st.cache_data(show_spinner=False)
 def get_data():
     return load_data()
 
+
 @st.cache_resource(show_spinner=False)
 def get_model():
     return load_models()
 
-def header(kicker, title, subtitle):
-    st.markdown(f'<div class="hero"><div class="hero-kicker">{kicker}</div><div class="hero-title">{title}</div><div class="hero-sub">{subtitle}</div></div>', unsafe_allow_html=True)
 
-def money(x):
-    return f"${x:,.2f}"
+def header(kicker, title, subtitle):
+    st.markdown(
+        f'<div class="hero"><div class="hero-kicker">{kicker}</div>'
+        f'<div class="hero-title">{title}</div><div class="hero-sub">{subtitle}</div></div>',
+        unsafe_allow_html=True,
+    )
+
+
+def money(value):
+    return f"${value:,.2f}"
+
+
+def explain(label, detail):
+    st.markdown(f"**{label}**")
+    st.caption(detail)
+
 
 st.sidebar.markdown("## ◈ CAUSAL AI")
 st.sidebar.caption("CUSTOMER GROWTH INTELLIGENCE")
-page = st.sidebar.radio("NAVIGATION", [
-    "01  Executive Overview",
-    "02  Customer Intelligence",
-    "03  Experimentation Lab",
-    "04  Uplift Intelligence",
-    "05  Profit Optimizer"
-])
+mode = st.sidebar.radio(
+    "WHO IS THIS VIEW FOR?",
+    ["Executive view", "Data science view"],
+    help="Executive view translates the findings into business decisions. Data science view exposes the statistical analysis and model diagnostics.",
+)
 st.sidebar.divider()
-st.sidebar.caption("DATASET · HILLSTROM EMAIL EXPERIMENT")
-st.sidebar.caption("MODEL · TWO-PART T-LEARNER / HURDLE SPEND")
-st.sidebar.caption("VERSION · 1.1.0")
 
 try:
     df = get_data()
 except Exception as exc:
     st.error(f"Dataset unavailable: {exc}")
-    st.info("Place the Hillstrom CSV at data/raw/hillstrom.csv or allow the app to download it on first launch.")
+    st.info("The app downloads the Hillstrom dataset on first launch. Check the dataset source or try again.")
     st.stop()
 
 validation = validate_data(df)
@@ -78,9 +97,10 @@ if not validation["valid"]:
 try:
     models = get_model()
 except Exception:
-    st.warning("Model artifacts are not available yet.")
-    if st.button("Train causal models now"):
-        with st.spinner("Training two outcome models. This may take a few minutes..."):
+    st.warning("The trained model artifacts are not available in this app session.")
+    st.write("The experiment data is ready. Train the models to enable customer scoring and campaign scenarios.")
+    if st.button("Train models", type="primary"):
+        with st.spinner("Training the causal models. This can take a few minutes..."):
             run_pipeline()
             st.cache_resource.clear()
         st.rerun()
@@ -90,181 +110,401 @@ scored = score_customers(df, models)
 metrics_path = Path("artifacts/metrics.json")
 metrics = json.loads(metrics_path.read_text()) if metrics_path.exists() else {}
 
-if page.startswith("01"):
-    header("DECISION INTELLIGENCE / OVERVIEW", "Customer Growth Control Tower",
-           "Measure what marketing changes — then allocate spend where incremental value is highest.")
-    ate_conv = two_proportion_test(df.conversion, df.treatment)
-    ate_spend = mean_difference(df.spend, df.treatment)
-    c1,c2,c3,c4 = st.columns(4)
-    c1.metric("Customers", f"{len(df):,}")
-    c2.metric("Conversion ATE", f"{ate_conv['ate']*100:+.3f} pp",
-              f"p = {ate_conv['p_value']:.4f}")
-    c3.metric("Spend ATE / customer", money(ate_spend["ate"]))
-    c4.metric("Positive uplift share", f"{(scored.estimated_incremental_spend>0).mean()*100:.1f}%")
-    left,right = st.columns([1.35,1])
-    with left:
-        st.subheader("Campaign arm performance")
-        arms = df.groupby("segment").agg(customers=("segment","size"),
-            conversion_rate=("conversion","mean"), visit_rate=("visit","mean"),
-            avg_spend=("spend","mean")).reset_index()
-        fig = px.bar(arms, x="segment", y="conversion_rate", color="segment",
-                     text=arms.conversion_rate.map(lambda x:f"{x:.2%}"),
-                     color_discrete_sequence=["#36d9b5","#5d9cec","#a78bfa"])
-        fig.update_layout(template="plotly_dark",paper_bgcolor="rgba(0,0,0,0)",
-                          plot_bgcolor="rgba(0,0,0,0)",showlegend=False,
-                          yaxis_tickformat=".1%")
-        st.plotly_chart(fig,use_container_width=True)
-    with right:
-        st.subheader("Treatment vs control")
-        comp = pd.DataFrame({"Group":["Control","Email treatment"],
-          "Conversion":[df.loc[df.treatment==0,"conversion"].mean(),
-                        df.loc[df.treatment==1,"conversion"].mean()],
-          "Spend":[df.loc[df.treatment==0,"spend"].mean(),
-                   df.loc[df.treatment==1,"spend"].mean()]})
-        st.dataframe(comp.style.format({"Conversion":"{:.3%}","Spend":"${:.2f}"}),
-                     use_container_width=True,hide_index=True)
-        st.info("Experiment-level differences are randomized estimates. Customer-level uplift is model-estimated.")
-    st.subheader("What the model estimates")
-    st.markdown("The T-learner estimates expected spend under both email and no-email scenarios for each customer. Their difference is the estimated incremental spend, not an observed individual causal effect.")
-    st.caption("Source: Kevin Hillstrom / MineThatData randomized email experiment. Outcomes were observed after campaign delivery.")
+# These are the same experiment estimators and trained-model outputs used by the research view.
+ate_conv = two_proportion_test(df.conversion, df.treatment)
+ate_spend = mean_difference(df.spend, df.treatment)
+comparison = metrics.get("policy_vs_all_email_ipw", {})
+policy_values = metrics.get("policy_value_ipw", {})
+all_email = metrics.get("all_email_value_ipw", {})
+no_email = metrics.get("all_control_value_ipw", {})
 
-elif page.startswith("02"):
-    header("CUSTOMER INTELLIGENCE / SEGMENTATION", "Understand the customer",
-           "Explore pre-treatment behaviour and inspect model-estimated outcomes under both actions.")
-    a,b,c = st.columns(3)
-    a.metric("Average historical spend", money(df.history.mean()))
-    b.metric("New customers", f"{df.newbie.mean():.1%}")
-    c.metric("Multichannel customers", f"{(df.channel=='Multichannel').mean():.1%}")
-    fig = px.scatter(scored.sample(min(3500,len(scored)),random_state=42),
-        x="history",y="estimated_incremental_spend",color="channel",
-        size="recency",hover_data=["zip_code","newbie","segment"],
-        color_discrete_sequence=["#36d9b5","#5d9cec","#a78bfa"])
-    fig.update_layout(template="plotly_dark",paper_bgcolor="rgba(0,0,0,0)",
-                      plot_bgcolor="rgba(0,0,0,0)")
-    st.plotly_chart(fig,use_container_width=True)
-    st.subheader("Customer-level scoring")
-    st.caption("These rows are scored using pre-treatment attributes only.")
-    sample = scored[["recency","history","channel","zip_code","predicted_spend_control",
-        "predicted_spend_treatment","estimated_incremental_spend"]].copy()
-    sample = sample.sort_values("estimated_incremental_spend",ascending=False).head(100)
-    st.dataframe(sample,use_container_width=True,hide_index=True)
-    st.download_button("Download top 100 customer scores",sample.to_csv(index=False),
-                       "top_customer_uplift.csv","text/csv")
-
-elif page.startswith("03"):
-    header("EXPERIMENTATION / CAUSAL VALIDATION", "Experimentation Lab",
-           "Quantify average campaign impact with confidence intervals and transparent statistical tests.")
-    outcome = st.selectbox("Primary outcome",["conversion","visit","spend"])
-    if outcome in ["conversion","visit"]:
-        result = two_proportion_test(df[outcome],df.treatment)
-        unit = "percentage points"
-        fmt = lambda x:f"{x*100:.3f}%"
-    else:
-        result = mean_difference(df[outcome],df.treatment)
-        unit = "USD per customer"
-        fmt = money
-    x1,x2,x3,x4 = st.columns(4)
-    x1.metric("Treatment mean",fmt(result["treated_rate"] if outcome!="spend" else result["treated_mean"]))
-    x2.metric("Control mean",fmt(result["control_rate"] if outcome!="spend" else result["control_mean"]))
-    x3.metric("Estimated ATE",fmt(result["ate"]))
-    x4.metric("P-value",f"{result['p_value']:.5f}")
-    st.subheader("95% confidence interval")
-    st.write(f"[{fmt(result['ci_lower'])}, {fmt(result['ci_upper'])}]")
-    st.write("Statistical conclusion:", "**Statistically significant at 5%**" if result["p_value"]<0.05 else "**Not statistically significant at 5%**")
-    st.caption(f"Welch-style mean comparison for spend; two-proportion z-test for binary outcomes. Effect is treatment minus control. Units: {unit}.")
-    arms = df.groupby("segment")[outcome].mean().reset_index()
-    fig=px.bar(arms,x="segment",y=outcome,color="segment",
-               color_discrete_sequence=["#36d9b5","#5d9cec","#a78bfa"])
-    fig.update_layout(template="plotly_dark",paper_bgcolor="rgba(0,0,0,0)",plot_bgcolor="rgba(0,0,0,0)")
-    st.plotly_chart(fig,use_container_width=True)
-    st.warning("The combined treatment pools two different email creatives. Interpret the estimate as the average effect of this mixture of email treatments versus no email.")
-
-elif page.startswith("04"):
-    header(
-        "UPLIFT INTELLIGENCE / MODEL INSIGHTS",
-        "Customer-level uplift diagnostics",
-        "Compare model-implied outcomes with policy values estimated on a randomized holdout.",
+if mode == "Executive view":
+    page = st.sidebar.radio(
+        "BUSINESS WORKSPACE",
+        ["Executive summary", "Customer insights", "Campaign planner"],
     )
-    comparison = metrics.get("policy_vs_all_email_ipw", {})
-    c1, c2, c3 = st.columns(3)
-    c1.metric("Mean model-implied uplift", money(scored.estimated_incremental_spend.mean()))
-    c2.metric("Positive model-implied uplift", f"{(scored.estimated_incremental_spend > 0).mean():.1%}")
-    diff = comparison.get("difference")
-    c3.metric("Policy vs email-everyone", money(diff) if diff is not None else "N/A")
 
-    if metrics.get("policy_value_ipw"):
-        st.subheader("Randomized holdout policy benchmark")
-        p1, p2, p3 = st.columns(3)
-        p1.metric("Model policy", money(metrics["policy_value_ipw"]["value"]))
-        p2.metric("Email everyone", money(metrics["all_email_value_ipw"]["value"]))
-        p3.metric("Email nobody", money(metrics["all_control_value_ipw"]["value"]))
-        st.caption("Inverse-propensity-weighted estimated spend per customer on the independent randomized holdout.")
-        if comparison:
-            st.warning(
-                "Model policy minus email-everyone: "
-                f"{money(comparison['difference'])} per customer "
-                f"(95% CI {money(comparison['ci_lower'])} to {money(comparison['ci_upper'])}). "
-                "The model policy has not demonstrated superiority to emailing everyone."
-            )
-
-    left, right = st.columns([1, 1.15])
-    with left:
-        fig = px.histogram(
-            scored, x="estimated_incremental_spend", nbins=60,
-            color_discrete_sequence=["#36d9b5"],
-            labels={"estimated_incremental_spend": "Estimated incremental spend ($)"},
+    if page == "Executive summary":
+        header(
+            "BUSINESS DECISION BRIEF",
+            "Did the email campaign work?",
+            "A plain-English summary of a historical randomized marketing experiment.",
         )
-        fig.add_vline(x=0, line_dash="dash", line_color="#ff9d6c")
-        fig.update_layout(template="plotly_dark", paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)")
-        st.plotly_chart(fig, use_container_width=True)
-    with right:
-        if metrics.get("qini_fraction"):
-            qfig = go.Figure()
-            qfig.add_trace(go.Scatter(
-                x=metrics["qini_fraction"], y=metrics["qini_gain"],
-                mode="lines", name="Uplift ranking",
-            ))
-            if metrics.get("qini_random_gain"):
-                qfig.add_trace(go.Scatter(
-                    x=metrics["qini_fraction"], y=metrics["qini_random_gain"],
-                    mode="lines", name="Random ranking reference",
-                    line=dict(dash="dash"),
-                ))
-            qfig.update_layout(
-                title="Holdout IPW cumulative uplift gain",
-                xaxis_title="Fraction of holdout customers ranked",
-                yaxis_title="Cumulative estimated incremental spend ($)",
-                template="plotly_dark", paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)",
-            )
-            st.plotly_chart(qfig, use_container_width=True)
+        st.caption(f"Evidence base: {len(df):,} randomized customer records · Hillstrom email experiment")
 
-    st.markdown(
-        "**Model:** two-part T-learner. Separate logistic regressions estimate conversion probability "
-        "under each treatment condition; regularized gradient-boosting models estimate spend conditional "
-        "on positive spend. Expected spend = conversion probability × conditional positive spend."
-    )
-    st.caption(
-        "Spend is sparse and zero-inflated, with near-zero holdout R². Individual uplift rankings and "
-        "Qini/AUUC are exploratory diagnostics—not validated customer-level causal effects or profit forecasts."
-    )
+        conversion_lift_pp = ate_conv["ate"] * 100
+        spend_lift = ate_spend["ate"]
+        significant = ate_conv["p_value"] < 0.05 and ate_spend["p_value"] < 0.05
+
+        a, b, c = st.columns(3)
+        a.metric("Conversion improvement", f"{conversion_lift_pp:+.2f} percentage points")
+        b.metric("Additional spend per customer", money(spend_lift))
+        c.metric("Customers in experiment", f"{len(df):,}")
+
+        st.markdown("### The business takeaway")
+        st.markdown(
+            '<div class="business-callout"><h3>Emails increased average customer response and spend.</h3>'
+            '<p class="muted">The experiment randomly assigned customers to email or no-email groups. '
+            'That makes the overall campaign comparison stronger evidence than a simple before-and-after comparison.</p></div>',
+            unsafe_allow_html=True,
+        )
+        if significant:
+            st.success("Both the conversion and spend comparisons are statistically significant at the 5% level.")
+        else:
+            st.info("At least one of the primary outcome comparisons is not statistically significant at the 5% level.")
+
+        left, right = st.columns(2)
+        with left:
+            st.subheader("What happened to conversion?")
+            conv = pd.DataFrame({
+                "Group": ["No email", "Email campaign"],
+                "Conversion rate": [
+                    df.loc[df.treatment == 0, "conversion"].mean(),
+                    df.loc[df.treatment == 1, "conversion"].mean(),
+                ],
+            })
+            fig = px.bar(
+                conv, x="Group", y="Conversion rate", text=conv["Conversion rate"].map(lambda x: f"{x:.2%}"),
+                color="Group", color_discrete_sequence=["#5d9cec", "#36d9b5"],
+            )
+            fig.update_layout(
+                template="plotly_dark", paper_bgcolor="rgba(0,0,0,0)",
+                plot_bgcolor="rgba(0,0,0,0)", showlegend=False, yaxis_tickformat=".1%",
+                yaxis_title="Share of customers who purchased",
+            )
+            st.plotly_chart(fig, use_container_width=True)
+        with right:
+            st.subheader("What happened to average spend?")
+            spend = pd.DataFrame({
+                "Group": ["No email", "Email campaign"],
+                "Average spend": [
+                    df.loc[df.treatment == 0, "spend"].mean(),
+                    df.loc[df.treatment == 1, "spend"].mean(),
+                ],
+            })
+            fig = px.bar(
+                spend, x="Group", y="Average spend", text=spend["Average spend"].map(money),
+                color="Group", color_discrete_sequence=["#5d9cec", "#36d9b5"],
+            )
+            fig.update_layout(
+                template="plotly_dark", paper_bgcolor="rgba(0,0,0,0)",
+                plot_bgcolor="rgba(0,0,0,0)", showlegend=False,
+                yaxis_title="Average spend per customer ($)",
+            )
+            st.plotly_chart(fig, use_container_width=True)
+
+        st.markdown("### What should management do?")
+        st.markdown(
+            "1. **Keep email as a campaign channel worth testing.** The randomized experiment found a positive average effect.\n"
+            "2. **Do not roll out model-based targeting as the winner yet.** Its holdout result has not beaten the simpler email-everyone strategy.\n"
+            "3. **Run a fresh randomized test** before changing the targeting policy in a live business."
+        )
+        with st.expander("How confident should we be? — statistical details"):
+            st.write(
+                f"Conversion: email-minus-control difference {ate_conv['ate'] * 100:+.3f} percentage points; "
+                f"95% confidence interval [{ate_conv['ci_lower'] * 100:.3f}, {ate_conv['ci_upper'] * 100:.3f}] pp; "
+                f"p-value {ate_conv['p_value']:.6g}."
+            )
+            st.write(
+                f"Spend: email-minus-control difference {money(ate_spend['ate'])} per customer; "
+                f"95% confidence interval [{money(ate_spend['ci_lower'])}, {money(ate_spend['ci_upper'])}]; "
+                f"p-value {ate_spend['p_value']:.6g}."
+            )
+            st.caption("These are average effects of the pooled email treatment versus no email. The two email creatives are combined in this primary comparison.")
+
+        st.markdown("### Does personalization improve the result?")
+        if policy_values and all_email and no_email and comparison:
+            p1, p2, p3 = st.columns(3)
+            p1.metric("Personalized model policy", money(policy_values["value"]))
+            p2.metric("Email everyone", money(all_email["value"]))
+            p3.metric("Email nobody", money(no_email["value"]))
+            st.caption("Estimated average spend per customer on the independent randomized holdout.")
+            st.warning(
+                f"The model policy is {money(comparison['difference'])} per customer versus emailing everyone "
+                f"(95% confidence interval: {money(comparison['ci_lower'])} to {money(comparison['ci_upper'])}). "
+                "The evidence does not establish that personalization improves on emailing everyone."
+            )
+        else:
+            st.info("Policy evaluation metrics are not available yet. Review the Data Science view after model training.")
+
+        st.caption(
+            "Important: this is a historical 2008 experiment, not a forecast of current campaign performance. "
+            "The results describe this dataset and should be re-tested with current customers."
+        )
+
+    elif page == "Customer insights":
+        header(
+            "CUSTOMER UNDERSTANDING",
+            "What customer patterns can we see?",
+            "Explore customer history and model estimates. These scores are hypotheses for testing, not proven individual effects.",
+        )
+        c1, c2, c3 = st.columns(3)
+        c1.metric("Average historical spend", money(df.history.mean()))
+        c2.metric("New customers", f"{df.newbie.mean():.1%}")
+        c3.metric("Multichannel customers", f"{(df.channel == 'Multichannel').mean():.1%}")
+
+        st.subheader("Estimated response by customer history")
+        chart_data = scored.copy()
+        chart_data["History group"] = pd.cut(
+            chart_data["history"], bins=5, duplicates="drop"
+        ).astype(str)
+        grouped = chart_data.groupby("History group", observed=False).agg(
+            customers=("estimated_incremental_spend", "size"),
+            estimated_incremental_spend=("estimated_incremental_spend", "mean"),
+        ).reset_index()
+        fig = px.bar(
+            grouped, x="History group", y="estimated_incremental_spend",
+            hover_data=["customers"], color_discrete_sequence=["#36d9b5"],
+        )
+        fig.update_layout(
+            template="plotly_dark", paper_bgcolor="rgba(0,0,0,0)",
+            plot_bgcolor="rgba(0,0,0,0)",
+            xaxis_title="Historical customer spend group",
+            yaxis_title="Average model-estimated incremental spend ($)",
+        )
+        st.plotly_chart(fig, use_container_width=True)
+        st.info(
+            "Interpretation: this chart shows patterns learned by the model. It does not prove that a particular "
+            "customer will spend more because of an email. The model's individual spend prediction is weak on holdout data."
+        )
+        with st.expander("Explore customer-level estimates"):
+            sample = scored[
+                ["recency", "history", "channel", "zip_code", "predicted_spend_control",
+                 "predicted_spend_treatment", "estimated_incremental_spend"]
+            ].sort_values("estimated_incremental_spend", ascending=False).head(100).copy()
+            sample = sample.rename(columns={
+                "recency": "Months since last purchase",
+                "history": "Historical spend",
+                "channel": "Customer channel",
+                "zip_code": "ZIP category",
+                "predicted_spend_control": "Estimated spend without email",
+                "predicted_spend_treatment": "Estimated spend with email",
+                "estimated_incremental_spend": "Model-estimated difference",
+            })
+            st.dataframe(sample, use_container_width=True, hide_index=True)
+            st.download_button(
+                "Download sample customer estimates",
+                sample.to_csv(index=False),
+                "customer_estimates_exploratory.csv",
+                "text/csv",
+            )
+
+    else:
+        header(
+            "CAMPAIGN PLANNING",
+            "Explore a campaign budget",
+            "Change the assumptions to see how a hypothetical contact plan changes. This is a scenario, not a profit forecast.",
+        )
+        st.warning(
+            "The dataset does not contain actual email delivery costs or product contribution margins. "
+            "You must supply these assumptions. The current targeting model has not proven better than emailing everyone."
+        )
+        col1, col2, col3 = st.columns(3)
+        budget = col1.number_input("Available campaign budget ($)", min_value=0.0, value=1000.0, step=100.0)
+        cost = col2.number_input("Assumed cost per email ($)", min_value=0.0, value=0.05, step=0.01)
+        margin = col3.slider(
+            "Assumed contribution margin",
+            0.0, 1.0, 0.4, 0.05,
+            format="%.0f%%",
+            help="Share of incremental revenue retained after variable product costs. This is a business input, not measured by the experiment.",
+        )
+        result = optimize_budget(scored, budget, cost, margin)
+        a, b, c = st.columns(3)
+        a.metric("Customers the scenario would contact", f"{result['customers_targeted']:,}")
+        b.metric("Estimated contact cost", money(result["marketing_cost"]))
+        c.metric("Modelled net contribution", money(result["expected_net_contribution"]))
+        st.caption(f"Unused budget under these assumptions: {money(result['unused_budget'])}")
+        st.subheader("What this scenario means")
+        st.write(
+            "The calculation applies the assumed contribution margin to model-estimated incremental revenue, "
+            "then subtracts the assumed email cost. It is useful for sensitivity analysis, but should not be "
+            "treated as realized profit or a validated customer-level recommendation."
+        )
+        with st.expander("View the proposed allocation"):
+            recommendations = result["recommendations"].copy()
+            display_cols = [
+                "recency", "history", "channel", "estimated_incremental_spend",
+                "expected_net_contribution", "recommended_action",
+            ]
+            top = recommendations[display_cols].head(250).rename(columns={
+                "recency": "Months since last purchase",
+                "history": "Historical spend",
+                "channel": "Customer channel",
+                "estimated_incremental_spend": "Estimated incremental spend",
+                "expected_net_contribution": "Modelled net contribution",
+                "recommended_action": "Scenario action",
+            })
+            st.dataframe(top, use_container_width=True, hide_index=True)
+            st.download_button(
+                "Download full scenario allocation",
+                recommendations.to_csv(index=False),
+                "campaign_scenario_allocation.csv",
+                "text/csv",
+            )
 
 else:
-    header("DECISION SCIENCE / RESOURCE ALLOCATION", "Profit Optimization",
-           "Allocate a fixed contact budget to customers with the highest estimated incremental net value.")
-    col1,col2,col3=st.columns(3)
-    budget=col1.number_input("Marketing budget ($)",min_value=0.0,value=1000.0,step=100.0)
-    cost=col2.number_input("Email cost per customer ($)",min_value=0.0,value=0.05,step=0.01)
-    margin=col3.slider("Contribution margin",0.0,1.0,0.4,0.05, help="Fraction of incremental revenue retained as contribution. For example, 0.40 means 40%. This is a business assumption, not a measured value in the dataset.")
-    result=optimize_budget(scored,budget,cost,margin)
-    a,b,c,d=st.columns(4)
-    a.metric("Customers selected",f"{result['customers_targeted']:,}")
-    b.metric("Contact spend",money(result["marketing_cost"]))
-    c.metric("Modelled net contribution",money(result["expected_net_contribution"]))
-    d.metric("Unused budget",money(result["unused_budget"]))
-    st.subheader("Recommended customer allocation")
-    top=result["recommendations"][["recency","history","channel","estimated_incremental_spend",
-        "expected_net_contribution","recommended_action"]].head(250)
-    st.dataframe(top,use_container_width=True,hide_index=True)
-    st.download_button("Download full allocation",result["recommendations"].to_csv(index=False),
-                       "campaign_allocation.csv","text/csv")
-    st.warning("This is an exploratory modelled scenario, not realized profit or a validated customer-level recommendation. Net contribution = estimated incremental revenue × assumed contribution margin − assumed email cost. The dataset does not contain actual email costs or product margins. The current holdout has not shown that this targeting policy outperforms emailing everyone.")
+    page = st.sidebar.radio(
+        "DATA SCIENCE WORKSPACE",
+        [
+            "Experiment evidence",
+            "Uplift model diagnostics",
+            "Budget model assumptions",
+        ],
+    )
+
+    if page == "Experiment evidence":
+        header(
+            "DATA SCIENCE / CAUSAL INFERENCE",
+            "Experiment evidence",
+            "Inspect the randomized treatment effect, uncertainty, and statistical assumptions.",
+        )
+        outcome = st.selectbox("Outcome to analyze", ["conversion", "visit", "spend"])
+        if outcome in ["conversion", "visit"]:
+            result = two_proportion_test(df[outcome], df.treatment)
+            fmt = lambda value: f"{value * 100:.3f}%"
+            unit = "percentage points"
+            treated = result["treated_rate"]
+            control = result["control_rate"]
+        else:
+            result = mean_difference(df[outcome], df.treatment)
+            fmt = money
+            unit = "USD per customer"
+            treated = result["treated_mean"]
+            control = result["control_mean"]
+
+        a, b, c, d = st.columns(4)
+        a.metric("Email group", fmt(treated))
+        b.metric("No-email group", fmt(control))
+        c.metric("Estimated average effect", fmt(result["ate"]))
+        d.metric("P-value", f"{result['p_value']:.5g}")
+        st.subheader("95% confidence interval")
+        st.write(f"[{fmt(result['ci_lower'])}, {fmt(result['ci_upper'])}]")
+        st.write(
+            "Statistical conclusion:",
+            "**Statistically significant at 5%**"
+            if result["p_value"] < 0.05 else "**Not statistically significant at 5%**",
+        )
+        arms = df.groupby("segment")[outcome].mean().reset_index()
+        fig = px.bar(
+            arms, x="segment", y=outcome, color="segment",
+            color_discrete_sequence=["#36d9b5", "#5d9cec", "#a78bfa"],
+        )
+        fig.update_layout(
+            template="plotly_dark", paper_bgcolor="rgba(0,0,0,0)",
+            plot_bgcolor="rgba(0,0,0,0)",
+        )
+        st.plotly_chart(fig, use_container_width=True)
+        st.caption(
+            f"Effect is email treatment minus no-email control. Units: {unit}. "
+            "Spend uses Welch's independent-sample t-test; binary outcomes use a two-proportion z-test."
+        )
+        st.warning(
+            "The pooled treatment combines Mens E-Mail and Womens E-Mail. The estimate is the average effect "
+            "of this mixture versus no email; creative-specific effects are not the primary estimand."
+        )
+
+    elif page == "Uplift model diagnostics":
+        header(
+            "DATA SCIENCE / HETEROGENEOUS TREATMENT EFFECTS",
+            "Uplift model diagnostics",
+            "Inspect model-implied customer differences and out-of-sample policy evaluation.",
+        )
+        c1, c2, c3 = st.columns(3)
+        c1.metric("Mean model-estimated uplift", money(scored.estimated_incremental_spend.mean()))
+        c2.metric("Share with positive model score", f"{(scored.estimated_incremental_spend > 0).mean():.1%}")
+        diff = comparison.get("difference")
+        c3.metric("Model policy minus email all", money(diff) if diff is not None else "N/A")
+
+        if policy_values and all_email and no_email:
+            st.subheader("Randomized holdout policy values")
+            p1, p2, p3 = st.columns(3)
+            p1.metric("Model-based policy", money(policy_values["value"]))
+            p2.metric("Email everyone", money(all_email["value"]))
+            p3.metric("Email nobody", money(no_email["value"]))
+            st.caption("Inverse-propensity-weighted estimated spend per customer on the independent randomized holdout.")
+            if comparison:
+                st.warning(
+                    f"Model policy minus email-everyone: {money(comparison['difference'])} per customer "
+                    f"(95% CI {money(comparison['ci_lower'])} to {money(comparison['ci_upper'])}). "
+                    "The model policy has not demonstrated superiority to emailing everyone."
+                )
+
+        left, right = st.columns(2)
+        with left:
+            fig = px.histogram(
+                scored, x="estimated_incremental_spend", nbins=60,
+                color_discrete_sequence=["#36d9b5"],
+                labels={"estimated_incremental_spend": "Model-estimated incremental spend ($)"},
+            )
+            fig.add_vline(x=0, line_dash="dash", line_color="#ff9d6c")
+            fig.update_layout(
+                template="plotly_dark", paper_bgcolor="rgba(0,0,0,0)",
+                plot_bgcolor="rgba(0,0,0,0)",
+            )
+            st.plotly_chart(fig, use_container_width=True)
+        with right:
+            if metrics.get("qini_fraction"):
+                fig = go.Figure()
+                fig.add_trace(go.Scatter(
+                    x=metrics["qini_fraction"], y=metrics["qini_gain"],
+                    mode="lines", name="Model ranking",
+                ))
+                if metrics.get("qini_random_gain"):
+                    fig.add_trace(go.Scatter(
+                        x=metrics["qini_fraction"], y=metrics["qini_random_gain"],
+                        mode="lines", name="Random ranking",
+                        line=dict(dash="dash"),
+                    ))
+                fig.update_layout(
+                    title="Holdout cumulative uplift gain",
+                    xaxis_title="Share of holdout customers ranked",
+                    yaxis_title="Cumulative IPW gain",
+                    template="plotly_dark", paper_bgcolor="rgba(0,0,0,0)",
+                    plot_bgcolor="rgba(0,0,0,0)",
+                )
+                st.plotly_chart(fig, use_container_width=True)
+
+        with st.expander("Model specification and limitations"):
+            st.markdown(
+                "The two-part T-learner fits separate treatment and control outcome models. "
+                "Logistic regression estimates conversion probability; gradient-boosting regression "
+                "estimates positive spend conditional on conversion. Expected spend is the product "
+                "of those two estimates. Uplift is the difference between the two model-implied expected spends."
+            )
+            st.write(
+                "Only pre-treatment covariates are used. The data is split into training and holdout sets; "
+                "the targeting threshold is selected using training data and policy values are evaluated "
+                "on the randomized holdout using inverse-propensity weighting."
+            )
+            st.warning(
+                "Holdout spend R-squared is close to zero. Individual uplift rankings and Qini/AUUC are "
+                "exploratory diagnostics, not validated individual causal effects or profit forecasts."
+            )
+
+    else:
+        header(
+            "DATA SCIENCE / DECISION MODEL",
+            "Budget model assumptions",
+            "Review the arithmetic and assumptions behind the campaign scenario.",
+        )
+        st.code(
+            "Modelled net contribution =\n"
+            "    estimated incremental revenue × assumed contribution margin\n"
+            "    − assumed email contact cost",
+            language="text",
+        )
+        st.markdown(
+            "- Contact cost is supplied by the dashboard user.\n"
+            "- Contribution margin is supplied by the dashboard user.\n"
+            "- Neither input is observed in the Hillstrom dataset.\n"
+            "- The scenario inherits the uncertainty and limitations of the uplift model."
+        )
+        st.warning(
+            "This is a sensitivity-analysis tool, not realized profit, a financial forecast, "
+            "or a validated production targeting policy."
+        )
+
+st.sidebar.divider()
+st.sidebar.caption("RESEARCH DATA · HILLSTROM EMAIL EXPERIMENT")
+st.sidebar.caption("MODEL · TWO-PART T-LEARNER")
+st.sidebar.caption("Dashboard presentation · Executive + Data Science")
