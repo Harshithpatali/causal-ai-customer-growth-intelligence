@@ -133,9 +133,10 @@ The project is designed for **Streamlit Community Cloud**; no separate backend s
 2. Create an app at https://share.streamlit.io/.
 3. Select this repository, the `main` branch, and `app.py` as the main file.
 4. Deploy. The runtime installs only the packages in `requirements.txt`.
-5. On first launch, use **Train causal models now** if model artifacts are not present.
+5. Before the first app launch, open GitHub → **Actions** → **Train and persist uplift model** → **Run workflow**. This one-time manual workflow downloads the public Hillstrom dataset, trains the model in Python 3.12, and commits the reusable model, evaluation metrics, and training manifest to `artifacts/`.
+6. Streamlit loads the saved `artifacts/uplift_model.joblib` and `artifacts/metrics.json` at runtime. **The dashboard never trains the model.** Retrain only when you intentionally change the model, features, data, or training procedure; run the workflow again to replace the saved artifacts.
 
-The dataset and trained model artifacts are intentionally not committed. A fresh instance must download the dataset and train the models. Free hosted instances may restart and lose locally generated artifacts; retraining may be necessary. For a persistent public research demo, consider storing versioned model artifacts in durable storage.
+The raw dataset remains downloaded at runtime rather than committed. The serialized model and metrics are versioned in GitHub, so Streamlit restarts do not require model retraining. The scikit-learn version is pinned to keep the training and serving environments compatible.
 
 ## Tests and quality checks
 
