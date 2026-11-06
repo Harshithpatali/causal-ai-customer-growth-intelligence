@@ -1,0 +1,25 @@
+{
+  "trained_at_utc": "2026-11-06T06:56:22.011181+00:00",
+  "source_commit": "04256b0faefeb268af28d3e1237e4e516d082172",
+  "python_version": "3.12.16",
+  "package_versions": {
+    "numpy": "2.5.4",
+    "pandas": "2.3.3",
+    "scipy": "1.18.1",
+    "scikit-learn": "1.9.1",
+    "joblib": "1.6.0"
+  },
+  "dataset": {
+    "file": "data/raw/hillstrom.csv",
+    "sha256": "0e5893329d8b93cefecc571777672028290ab69865718020c78c7284f291aece"
+  },
+  "model": {
+    "file": "artifacts/uplift_model.joblib",
+    "sha256": "669bd7d352aa11d9f281f626af069fa789fba9951648d99e4943100b0cb30630",
+    "size_bytes": 203101
+  },
+  "metrics": {
+    "file": "artifacts/metrics.json",
+    "sha256": "1e25da6150dd2d0fc452f53687fd119147540e16322f3c226f6b2a82ae8b2d96"
+  }
+}
