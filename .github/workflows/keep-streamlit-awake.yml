@@ -2,8 +2,8 @@ name: Keep Streamlit demo warm
 
 on:
   schedule:
-    # Visit every 8 hours; the offset avoids the busiest top-of-hour window.
-    - cron: "19 0,8,16 * * *"
+    # Visit every 4 hours; the offset avoids the busiest top-of-hour window.
+    - cron: "17 */4 * * *"
   workflow_dispatch:
 
 permissions:
