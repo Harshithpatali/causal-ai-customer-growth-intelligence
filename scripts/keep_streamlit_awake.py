@@ -28,11 +28,12 @@ def main():
                 name=re.compile(r"get this app back up", re.IGNORECASE),
             )
             try:
-                if wake_button.first.is_visible(timeout=5_000):
-                    print("The app is hibernating. Clicking its wake-up control.")
-                    wake_button.first.click(timeout=15_000)
+                wake_button.first.wait_for(state="visible", timeout=5_000)
             except PlaywrightTimeoutError:
                 print("No wake-up control found; waiting for the live app.")
+            else:
+                print("The app is hibernating. Clicking its wake-up control.")
+                wake_button.first.click(timeout=15_000)
 
             # Keep an actual browser session open while Streamlit starts.
             page.get_by_text("CAUSAL AI", exact=False).first.wait_for(
