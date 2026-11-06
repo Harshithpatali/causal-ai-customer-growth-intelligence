@@ -15,3 +15,6 @@ artifacts/*
 !data/raw/.gitkeep
 !data/processed/.gitkeep
 !artifacts/.gitkeep
+!artifacts/metrics.json
+!artifacts/uplift_model.joblib
+!artifacts/model_manifest.json
