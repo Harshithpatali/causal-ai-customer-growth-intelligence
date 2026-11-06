@@ -13,7 +13,6 @@ from causal_ai.data import load_data, validate_data
 from causal_ai.modeling import load_models, score_customers
 from causal_ai.statistics import two_proportion_test, mean_difference
 from causal_ai.optimization import optimize_budget
-from causal_ai.pipeline import run_pipeline
 
 
 st.set_page_config(
@@ -96,19 +95,37 @@ if not validation["valid"]:
 
 try:
     models = get_model()
-except Exception:
-    st.warning("The trained model artifacts are not available in this app session.")
-    st.write("The experiment data is ready. Train the models to enable customer scoring and campaign scenarios.")
-    if st.button("Train models", type="primary"):
-        with st.spinner("Training the causal models. This can take a few minutes..."):
-            run_pipeline()
-            st.cache_resource.clear()
-        st.rerun()
+except FileNotFoundError as exc:
+    st.error("The saved causal model is missing. This app does not train models during startup.")
+    st.info(
+        "Run the GitHub Actions workflow **Train and persist uplift model** once. "
+        "It trains the model and commits the reusable model and metrics to the artifacts/ folder. "
+        "After that commit, Streamlit will redeploy and load the saved model."
+    )
+    st.markdown(
+        "[Open the repository Actions tab](https://github.com/Harshithpatali/causal-ai-customer-growth-intelligence/actions)"
+    )
+    with st.expander("Technical details"):
+        st.code(str(exc))
+    st.stop()
+except Exception as exc:
+    st.error("The saved model could not be loaded. Check the model artifact and dependency versions.")
+    with st.expander("Technical details"):
+        st.code(str(exc))
     st.stop()
 
-scored = score_customers(df, models)
 metrics_path = Path("artifacts/metrics.json")
-metrics = json.loads(metrics_path.read_text()) if metrics_path.exists() else {}
+if not metrics_path.exists():
+    st.error("Saved model metrics are missing. Run the GitHub Actions training workflow.")
+    st.stop()
+metrics = json.loads(metrics_path.read_text())
+manifest_path = Path("artifacts/model_manifest.json")
+if manifest_path.exists():
+    manifest = json.loads(manifest_path.read_text())
+    trained_at = manifest.get("trained_at_utc", "unknown")
+    st.sidebar.caption(f"Model artifact trained: {trained_at}")
+
+scored = score_customers(df, models)
 
 # These are the same experiment estimators and trained-model outputs used by the research view.
 ate_conv = two_proportion_test(df.conversion, df.treatment)
