@@ -55,6 +55,12 @@ def get_model():
     return load_models()
 
 
+@st.cache_data(show_spinner="Scoring customers with the saved model...")
+def get_scored_data():
+    # Inference is cached per app process; reruns do not rescore all 64k rows.
+    return score_customers(get_data(), get_model())
+
+
 def header(kicker, title, subtitle):
     st.markdown(
         f'<div class="hero"><div class="hero-kicker">{kicker}</div>'
@@ -125,7 +131,7 @@ if manifest_path.exists():
     trained_at = manifest.get("trained_at_utc", "unknown")
     st.sidebar.caption(f"Model artifact trained: {trained_at}")
 
-scored = score_customers(df, models)
+scored = get_scored_data()
 
 # These are the same experiment estimators and trained-model outputs used by the research view.
 ate_conv = two_proportion_test(df.conversion, df.treatment)
