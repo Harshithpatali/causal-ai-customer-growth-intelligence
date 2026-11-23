@@ -1,4 +1,5 @@
 import numpy as np
+import pandas as pd
 from scipy import stats
 
 
@@ -99,7 +100,7 @@ def randomized_assignment_diagnostics(df, treatment_col="treatment", features=No
         series = df[feature]
         if series.isna().any():
             raise ValueError(f"Covariate {feature} contains missing values")
-        if np.issubdtype(series.dtype, np.number) and series.nunique() > 2:
+        if pd.api.types.is_numeric_dtype(series) and series.nunique() > 2:
             x1 = treated[feature].astype(float).to_numpy()
             x0 = control[feature].astype(float).to_numpy()
             pooled_sd = np.sqrt((np.var(x1, ddof=1) + np.var(x0, ddof=1)) / 2)
