@@ -63,3 +63,8 @@ Use the dashboard to learn and communicate the workflow from randomized experime
 3. Estimate creative-specific or multi-treatment effects.
 4. Examine calibration and subgroup stability.
 5. Pre-register and run a prospective randomized comparison of the candidate policy against email-everyone.
+
+
+## Identification assumptions
+
+The treatment is assigned pooled email versus no-email (intention-to-treat). Identification of the average effect rests on the upstream randomized assignment, consistency of campaign versions, no interference, accurate outcome measurement, and non-zero assignment probabilities. Pooling creatives defines a mixture treatment. Covariates are pre-treatment only; post-assignment opens, clicks, visits and conversion are excluded from the treatment-effect feature set. Baseline balance is descriptive and does not prove randomization. An observational application would require a separately justified DAG, pre-treatment adjustment set, overlap checks, and sensitivity analysis for unmeasured confounding; this model card makes no such observational claim.
