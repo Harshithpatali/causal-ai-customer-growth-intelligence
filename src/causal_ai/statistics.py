@@ -133,8 +133,7 @@ def naive_observed_difference(y, treatment, confidence=0.95):
     estimator without exchangeability/overlap and a defensible adjustment design.
     """
     result = mean_difference(y, treatment, confidence=confidence)
-    result["interpretation"] = "randomized difference-in-means" \\
-        if "randomized" else "unadjusted association"
+    result["interpretation"] = "unadjusted observed difference; causal interpretation depends on design assumptions"
     return result
 
 
