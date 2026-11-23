@@ -25,7 +25,7 @@ def test_known_heterogeneous_effect_is_recovered_in_large_randomized_sample():
     df, true_tau = synthetic_randomized_data()
     pseudo = randomized_pseudo_outcome(df.outcome, df.treatment, 2 / 3)
     assert abs(float(pseudo.mean()) - float(true_tau.mean())) < 0.015
-    metrics = ranking_metrics(df.outcome, df.treatment, df.x, 2 / 3)
+    metrics = ranking_metrics(df.outcome, df.treatment, df.x, 2 / 3, fractions=(0.10, 0.50, 1.0))
     assert metrics["uplift_at"]["10%"]["estimate"] > metrics["uplift_at"]["100%"]["estimate"]
 
 
