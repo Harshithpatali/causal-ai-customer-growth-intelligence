@@ -196,7 +196,18 @@ The runner compares S-, T-, X- and doubly robust learners using repeated out-of-
 
 The supported outcomes are conversion, visit and spend. Conversion and visit are binary outcomes; spend is continuous and highly zero-inflated. Use the binary outcomes as important sensitivity analyses rather than assuming spend is the only business objective. The DR learner uses the known randomized propensity and cross-fitted outcome nuisance predictions; it is not an observational propensity model. The implementation is a lightweight sklearn DR learner, not EconML's DRLearner or a causal forest.
 
-The report records estimates across seeds. Across-seed standard deviation measures sensitivity to fold assignments; it is **not** a confidence interval from independent experiments. Policy-value intervals within each repeat use the randomized IPW estimator. The benchmark must be run on the full dataset and reviewed before quoting any new performance claim. No benchmark result is asserted here until the runner has been executed and inspected.
+The report records estimates across seeds. Across-seed standard deviation measures sensitivity to fold assignments; it is **not** a confidence interval from independent experiments. Policy-value intervals within each repeat use the randomized IPW estimator.
+
+The full benchmark JSON additionally reports:
+- **AUUC and Qini area**, computed from the known-propensity Horvitz–Thompson pseudo-outcome after ranking held-out predictions.
+- **Uplift@10%, @20%, and @30%**, with the selected contact fraction stated explicitly.
+- **Randomized-design diagnostics**, including the known 2/3 pooled-email assignment probability, observed allocation share, arm counts, and design-based positivity. No observational propensity model is fitted.
+- **Subgroup IPW effects** for pre-treatment history segment, prior Mens/Womens purchases, new-customer status, and channel. These are exploratory, unadjusted subgroup summaries; they are not confirmatory claims.
+- **Assignment-probability perturbation stress tests** around 2/3. These are deliberately misspecified sensitivity scenarios, not evidence that the true randomized propensity is unknown.
+- **Incremental policy value against every rule baseline**, with conservative intervals formed from the marginal policy-value intervals. They are not paired intervals and should be interpreted cautiously.
+- **Elapsed runtime** for the ranking-diagnostic pass and total benchmark.
+
+Qini/AUUC and uplift-at-k are ranking diagnostics, not estimates of profit or realized campaign ROI. The top-k uplift intervals are conditional normal approximations using the IPW pseudo-outcome. The benchmark must be run on the full dataset and reviewed before quoting performance claims.
 
 ## Tests and quality checks
 
