@@ -181,13 +181,14 @@ To refresh the model intentionally, rerun the **Train and persist uplift model**
 
 ## Streamlit Community Cloud availability
 
-Community Cloud currently hibernates apps after 12 hours without traffic (not 30 minutes). The **Keep Streamlit demo warm** GitHub Actions workflow opens the public app in a headless browser every 4 hours and clicks the app's wake-up control if the hibernation page appears. This is best-effort only: GitHub scheduled workflows can be delayed or skipped during periods of high load, and this does not provide an uptime guarantee. Scheduled workflows run from the default branch; GitHub may automatically disable scheduled workflows in public repositories after 60 days without repository activity.
+Community Cloud currently hibernates apps after 12 hours without traffic (not 30 minutes). The scheduled keep-warm workflow has been disabled because repeated browser checks were timing out while waiting for page-specific text and did not provide a reliable uptime signal. A manual-only health check remains available under GitHub Actions → **Manual Streamlit demo health check**. Streamlit Community Cloud hibernation is a hosting limitation; this repository does not claim guaranteed uptime.
 
 ## Uplift learner research benchmark
 
 A separate, reproducible modelling benchmark is available without changing the deployed Streamlit inference path:
 
 ```bash
+pip install -e . --no-deps
 python scripts/run_uplift_benchmark.py --outcome conversion --seeds 11,23,37,53,71 --folds 3
 ```
 
@@ -201,11 +202,12 @@ The report records estimates across seeds. Across-seed standard deviation measur
 
 ```bash
 pip install -r requirements-dev.txt
-pytest -q
+pip install -e . --no-deps
+pytest -q -m "not benchmark"
 python -m compileall -q app.py src scripts tests
 ```
 
-Runtime dependencies stay in `requirements.txt`; test tooling is isolated in `requirements-dev.txt`. GitHub Actions installs the development requirements, compiles the Python modules, runs the automated unit tests, and checks dependency consistency. The full 64,000-row model pipeline is kept out of CI to keep checks fast and deterministic.
+Runtime dependencies stay in `requirements.txt`; test tooling is isolated in `requirements-dev.txt`. GitHub Actions installs the development requirements and the local `src/` package, compiles the Python modules, runs fast tests with `pytest -m "not benchmark"`, and checks dependency consistency. The full 64,000-row benchmark runs separately through the manually dispatchable **Uplift Full Experiment** workflow and publishes one JSON artifact per outcome.
 
 ## Repository structure
 
