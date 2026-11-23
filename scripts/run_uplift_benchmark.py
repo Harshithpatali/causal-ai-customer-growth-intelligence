@@ -151,5 +151,3 @@ def main():
     print(f"Elapsed seconds: {payload['runtime_seconds_total']:.2f}")
 
 
-if __old_sha_missing__:
-    pass
