@@ -185,8 +185,16 @@ def repeated_crossfit_benchmark(df, outcome_col="conversion", treatment_col="tre
 
 
 def _top_fraction_policy(score, fraction):
-    threshold = np.quantile(score, 1 - fraction)
-    return (score >= threshold).astype(int)
+    """Select an exact, deterministic top-k contact budget (stable tie handling)."""
+    score = np.asarray(score, dtype=float)
+    if score.ndim != 1 or not np.isfinite(score).all():
+        raise ValueError("policy scores must be a finite one-dimensional array")
+    k = int(round(float(fraction) * len(score)))
+    policy = np.zeros(len(score), dtype=int)
+    if k:
+        order = np.argsort(-score, kind="stable")
+        policy[order[:k]] = 1
+    return policy
 
 
 def _fit_predict_fold(X_train, t_train, y_train, X_valid, p, seed):
