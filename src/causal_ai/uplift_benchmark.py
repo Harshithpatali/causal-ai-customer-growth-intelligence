@@ -175,7 +175,7 @@ def repeated_crossfit_benchmark(df, outcome_col="conversion", treatment_col="tre
             records.append({"seed": int(seed), "policy": name, **value})
     frame = pd.DataFrame(records)
     summary = (frame.groupby("policy")
-               .agg(mean_value=("value", "mean"), sd_across_repeats=("value", "std"),
+               .agg(mean_value=("value", "mean"), sd_across_repeats=("value", lambda values: float(values.std(ddof=1)) if len(values) > 1 else None),
                     mean_ci_lower=("ci_lower", "mean"), mean_ci_upper=("ci_upper", "mean"))
                .reset_index())
     return {"summary": summary.to_dict(orient="records"),
