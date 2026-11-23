@@ -1,0 +1,47 @@
+name: Uplift Full Experiment
+
+on:
+  push:
+    branches: [uplift-modelling-benchmark]
+    paths:
+      - ".github/workflows/uplift-benchmark.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  benchmark:
+    name: Hillstrom ${{ matrix.outcome }} benchmark
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    strategy:
+      fail-fast: false
+      matrix:
+        outcome: [conversion, visit, spend]
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+      - name: Install benchmark dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+      - name: Run full repeated cross-fitted benchmark
+        run: |
+          python scripts/run_uplift_benchmark.py \
+            --outcome "${{ matrix.outcome }}" \
+            --seeds 11,23,37,53,71 \
+            --folds 3 \
+            --out "reports/uplift_benchmark_${{ matrix.outcome }}.json"
+      - name: Upload reproducible result
+        uses: actions/upload-artifact@v4
+        with:
+          name: uplift-benchmark-${{ matrix.outcome }}
+          path: reports/uplift_benchmark_${{ matrix.outcome }}.json
+          if-no-files-found: error
+          retention-days: 90
