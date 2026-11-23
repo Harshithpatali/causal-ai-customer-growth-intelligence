@@ -27,3 +27,6 @@ where = ["src"]
 [tool.pytest.ini_options]
 pythonpath = ["src"]
 testpaths = ["tests"]
+markers = [
+  "benchmark: slower full-data or integration benchmark (excluded from fast CI)",
+]
