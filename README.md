@@ -183,6 +183,20 @@ To refresh the model intentionally, rerun the **Train and persist uplift model**
 
 Community Cloud currently hibernates apps after 12 hours without traffic (not 30 minutes). The **Keep Streamlit demo warm** GitHub Actions workflow opens the public app in a headless browser every 4 hours and clicks the app's wake-up control if the hibernation page appears. This is best-effort only: GitHub scheduled workflows can be delayed or skipped during periods of high load, and this does not provide an uptime guarantee. Scheduled workflows run from the default branch; GitHub may automatically disable scheduled workflows in public repositories after 60 days without repository activity.
 
+## Uplift learner research benchmark
+
+A separate, reproducible modelling benchmark is available without changing the deployed Streamlit inference path:
+
+```bash
+python scripts/run_uplift_benchmark.py --outcome conversion --seeds 11,23,37,53,71 --folds 3
+```
+
+The runner compares S-, T-, X- and doubly robust learners using repeated out-of-fold predictions. It benchmarks equal-contact-budget policies against random targeting, recency, historical spend, prior Mens/Womens purchase indicators, email-everyone and email-nobody. It also evaluates separate Mens-vs-control and Womens-vs-control randomized contrasts. These creative-specific comparisons are not a joint three-action policy and do not by themselves establish which creative is superior.
+
+The supported outcomes are conversion, visit and spend. Conversion and visit are binary outcomes; spend is continuous and highly zero-inflated. Use the binary outcomes as important sensitivity analyses rather than assuming spend is the only business objective. The DR learner uses the known randomized propensity and cross-fitted outcome nuisance predictions; it is not an observational propensity model. The implementation is a lightweight sklearn DR learner, not EconML's DRLearner or a causal forest.
+
+The report records estimates across seeds. Across-seed standard deviation measures sensitivity to fold assignments; it is **not** a confidence interval from independent experiments. Policy-value intervals within each repeat use the randomized IPW estimator. The benchmark must be run on the full dataset and reviewed before quoting any new performance claim. No benchmark result is asserted here until the runner has been executed and inspected.
+
 ## Tests and quality checks
 
 ```bash
