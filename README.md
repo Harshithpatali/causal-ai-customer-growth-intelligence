@@ -39,6 +39,43 @@ The raw CSV is downloaded on first run to `data/raw/hillstrom.csv`; it is not co
 
 Dataset source description: https://blog.minethatdata.com/2008/03/minethatdata-e-mail-analytics-and-data.html
 
+## Business decision and identification strategy
+
+**Decision question:** For the historical Hillstrom audience, did assignment to either email creative (the pooled email policy) change average visit, conversion, and spend relative to no email—and does a customer-level targeting rule improve spend per eligible customer over emailing everyone?
+
+This is an **observational analysis of a randomized experiment**, not synthetic data and not an observational-treatment study. The upstream experiment assigned customers among two email creatives and a no-email control. The main estimand is therefore the intention-to-treat effect of assignment to the pooled email mixture, not the effect of opening an email or an individual customer's latent response.
+
+### Identification assumptions and causal diagram
+
+The primary difference-in-means estimate relies on the experiment's documented random assignment, consistency of the assigned campaign conditions, no interference between customers, correctly observed outcomes, and treatment positivity. Pooling the two email creatives defines a mixture intervention; it does not identify the effect of either creative in isolation.
+
+```mermaid
+flowchart LR
+  X[Pre-treatment customer attributes] --> Y[Visit / conversion / spend]
+  X --> M[Observed model features]
+  R[Random assignment] --> T[Assigned campaign arm]
+  T --> Y
+  T --> O[Observed outcome]
+  Y --> O
+```
+
+The diagram emphasizes that baseline attributes can predict outcomes but should not confound randomized assignment. The assignment mechanism supports exchangeability in expectation; finite-sample balance is assessed with standardized mean differences. The source contains no customer identifier, delivery/open events, or complete operational cost and margin data. The no-interference assumption (for example, household spillovers) cannot be empirically verified. Positivity is supported by non-zero assignment to each of the three arms; for the pooled binary contrast, the empirical treatment share is approximately two thirds.
+
+For an observational deployment dataset, a DAG and an adjustment set would need to be specified before fitting: include only common causes measured before treatment, never adjust for mediators or variables affected by the offer, verify propensity-score overlap, and state that unobserved confounding remains possible. The current randomized dataset cannot quantify hidden-confounder bias in an observational design; that requires a separate observational identification analysis and sensitivity model.
+
+### Baseline versus causal estimate
+
+The observed pooled email-minus-control spend difference is **+$0.5968 per customer** (95% CI +$0.3762 to +$0.8174). Because assignment is randomized, this unadjusted difference-in-means is the design-based ATE estimator—not a misleading observational baseline. A naive correlation comparison would be misleading only if assignment were not randomized or if the analysis departed from the documented assignment mechanism.
+
+### Estimators and scope
+
+The project currently reports:
+- Difference-in-means / Welch inference for the randomized ATE.
+- A two-part T-learner for exploratory heterogeneous expected-spend predictions.
+- IPW policy value and paired policy contrasts on a randomized holdout.
+
+It does **not** currently claim that IPW, matching, doubly robust estimation, causal forests, or meta-learners beyond the T-learner have been benchmarked. Nor does it claim a validated AUUC/Qini benchmark. The Qini-style cumulative IPW curve is a ranking diagnostic. A future observational extension should compare propensity matching/IPW and a doubly robust learner against a pre-specified adjustment set, with explicit overlap and hidden-confounding sensitivity analysis.
+
 ## Statistical design
 
 ### Average treatment effects
@@ -64,7 +101,7 @@ Only pre-treatment covariates are used. Outcomes are not used as model features.
 - A stratified 75/25 train/holdout split is used.
 - The targeting threshold is selected using training data.
 - Policy values are estimated on the randomized holdout using inverse-propensity weighting (IPW), with the known 2/3 pooled-email assignment probability.
-- The model policy is compared with emailing everyone and emailing nobody. The paired policy contrast and confidence interval are reported.
+- The model policy is compared with emailing everyone and emailing nobody. The paired policy contrast and confidence interval are reported. A seeded permutation diagnostic and baseline standardized-mean-difference balance utility are included in `src/causal_ai/statistics.py`; these are diagnostics, not proof of randomization or absence of confounding.
 - Qini/AUUC is presented as an exploratory ranking diagnostic, not as evidence of profitability.
 
 ### Budget scenario
@@ -81,7 +118,7 @@ The dataset contains neither delivery costs nor product contribution margins. Th
 
 ## Evaluation snapshot
 
-The reproducible analysis is documented in [the full evaluation report](reports/full_evaluation.md). Model purpose, intended use, evaluation, and limitations are summarized in the [model card](reports/model_card.md).
+The reproducible analysis is documented in [the full evaluation report](reports/full_evaluation.md). Model purpose, intended use, evaluation, and limitations are summarized in the [model card](reports/model_card.md) and the [identification and limitations note](reports/IDENTIFICATION_AND_LIMITATIONS.md).
 
 | Holdout policy | IPW estimated spend per customer |
 |---|---:|
@@ -171,6 +208,18 @@ reports/                     Evaluation report and data profile
 tests/                       Statistical and modelling tests
 configs/                      Reproducible analysis assumptions
 ```
+
+## Assumptions, interpretation and limitations
+
+- Treatment is the assigned email mixture (intention-to-treat), not email opening or engagement.
+- Consistency and no interference are assumed; household or social spillovers are not measured.
+- Assignment probabilities are known from the 1:1:1 three-arm design; the pooled email probability is 2/3 and control is 1/3.
+- The pooled contrast has positivity because both assignment groups are represented. The observational propensity-overlap condition is not applicable to this randomized design; it must be checked separately for any non-randomized extension.
+- Baseline balance is a diagnostic, not proof of randomization. Imbalance can occur by chance.
+- No unmeasured-confounding sensitivity claim is made: randomization is the identification basis here. For observational extensions, unmeasured confounding remains an explicit threat.
+- Do not adjust for post-assignment mediators such as email opens, clicks, visits, or conversion when estimating the total assignment effect.
+- Customer-level CATE predictions are not individually identifiable; the T-learner approximates conditional response differences and has weak spend prediction.
+- The optimizer uses assumed contact cost and contribution margin; its outputs are scenarios, not realized ROI.
 
 ## Limitations and next research steps
 
