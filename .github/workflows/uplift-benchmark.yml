@@ -5,6 +5,9 @@ on:
     branches: [uplift-modelling-benchmark]
     paths:
       - ".github/workflows/uplift-benchmark.yml"
+      - "src/causal_ai/**"
+      - "scripts/run_uplift_benchmark.py"
+      - "tests/test_research_diagnostics.py"
   workflow_dispatch:
 
 permissions:
