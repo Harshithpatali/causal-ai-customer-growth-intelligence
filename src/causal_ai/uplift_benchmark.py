@@ -155,15 +155,6 @@ def repeated_crossfit_benchmark(df, outcome_col="conversion", treatment_col="tre
                        ["s_learner", "t_learner", "x_learner", "dr_learner"]}
         splitter = StratifiedKFold(n_splits=n_splits, shuffle=True, random_state=int(seed))
         for train, valid in splitter.split(X, t):
-            fitted = fit_uplift_learners(X.iloc[train], t[train], y[train],
-                                         propensity=p, seed=int(seed))
-            for name in predictions:
-                # Each learner is trained only on the fold's training rows.
-                # Predictions are obtained by a small helper refit on the full
-                # training fold, avoiding reuse of in-sample training scores.
-                pass
-            # fit_uplift_learners returns training predictions; fit models again
-            # on train and score validation via the dedicated fold helper below.
             fold_pred = _fit_predict_fold(X.iloc[train], t[train], y[train],
                                           X.iloc[valid], p, int(seed))
             for name, values in fold_pred.items():
@@ -242,3 +233,25 @@ def _fit_predict_fold(X_train, t_train, y_train, X_valid, p, seed):
     drm.fit(X_train, dr_score)
     return {"s_learner": s_effect, "t_learner": t_effect,
             "x_learner": x_effect, "dr_learner": drm.predict(X_valid)}
+
+
+def repeated_multitreatment_benchmark(df, outcome_col="conversion", segment_col="segment",
+                                      feature_cols=None, seeds=(11, 23, 37, 53, 71),
+                                      n_splits=3):
+    """Run separate Mens-vs-control and Womens-vs-control randomized contrasts.
+
+    The original three-arm experiment assigns each arm with probability 1/3.
+    Each contrast uses only its creative and the no-email control, hence p=0.5
+    within that two-arm subset. These are separate contrasts, not a joint
+    three-action policy or a direct Mens-vs-Womens superiority test.
+    """
+    if segment_col not in df:
+        raise ValueError(f"Missing segment column: {segment_col}")
+    results = {}
+    for creative in ["Mens E-Mail", "Womens E-Mail"]:
+        subset = df[df[segment_col].isin([creative, "No E-Mail"])].copy()
+        subset["__binary_treatment__"] = (subset[segment_col] == creative).astype(int)
+        results[creative] = repeated_crossfit_benchmark(
+            subset, outcome_col=outcome_col, treatment_col="__binary_treatment__",
+            feature_cols=feature_cols, seeds=seeds, n_splits=n_splits, propensity=0.5)
+    return results
