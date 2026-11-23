@@ -8,11 +8,10 @@ from __future__ import annotations
 
 import numpy as np
 import pandas as pd
-from sklearn.base import clone
 from sklearn.compose import ColumnTransformer
-from sklearn.ensemble import HistGradientBoostingRegressor, RandomForestRegressor
+from sklearn.ensemble import HistGradientBoostingRegressor
 from sklearn.impute import SimpleImputer
-from sklearn.linear_model import LogisticRegression, Ridge
+from sklearn.linear_model import LogisticRegression
 from sklearn.model_selection import StratifiedKFold
 from sklearn.pipeline import Pipeline
 from sklearn.preprocessing import OneHotEncoder, StandardScaler
@@ -167,7 +166,7 @@ def repeated_crossfit_benchmark(df, outcome_col="conversion", treatment_col="tre
             "mens_affinity": pd.to_numeric(data["mens"]).to_numpy(),
             "womens_affinity": pd.to_numeric(data["womens"]).to_numpy(),
         }
-        policies = {name: (score > 0).astype(int) for name, score in predictions.items()}
+        policies = {name: _top_fraction_policy(score, p) for name, score in predictions.items()}
         policies.update({name: _top_fraction_policy(score, p) for name, score in rules.items()})
         policies["all_treat"] = np.ones(len(data), dtype=int)
         policies["none"] = np.zeros(len(data), dtype=int)
