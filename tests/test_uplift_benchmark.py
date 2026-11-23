@@ -59,3 +59,12 @@ def test_multitreatment_benchmark_separates_creatives():
     assert set(result) == {"Mens E-Mail", "Womens E-Mail"}
     for contrast in result.values():
         assert contrast["outcome"] == "conversion"
+
+
+def test_equal_budget_policy_handles_ties_deterministically():
+    from causal_ai.uplift_benchmark import _top_fraction_policy
+    scores = np.array([1, 1, 1, 1, 1], dtype=float)
+    first = _top_fraction_policy(scores, 0.4)
+    second = _top_fraction_policy(scores, 0.4)
+    assert first.tolist() == second.tolist()
+    assert int(first.sum()) == 2
