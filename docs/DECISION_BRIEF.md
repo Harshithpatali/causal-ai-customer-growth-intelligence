@@ -5,6 +5,12 @@
 **Decision owner:** CRM / lifecycle marketing lead  
 **Decision:** Treat the randomized email experiment as evidence that the tested email treatment mixture increased average customer response and spend in this historical sample. Do not deploy the current customer-level uplift ranking as a superior targeting policy.
 
+## Business question and design
+
+The business question is whether assigning this historical audience to the pooled email campaign changed average spend and whether a model-based targeting rule adds value over emailing everyone. The data are the public 2008 Hillstrom / MineThatData randomized email experiment, not synthetic data. The primary comparison is intention-to-treat: pooled assignment to either creative versus assignment to no email.
+
+The design-based estimate assumes correct assignment and outcome records, consistency of assigned campaign versions, no interference, and non-zero allocation to both groups. The two email creative arms and the no-email arm were assigned in approximately equal proportions; after pooling, the email probability is 2/3. Baseline balance diagnostics can reveal chance imbalances but cannot prove randomization. Post-treatment opens/clicks/visits are not valid controls for the total assignment effect.
+
 ## Evidence from the randomized experiment
 
 The analysis covers 64,000 randomized records across two email arms and a no-email control. Pooling the two email creatives:
@@ -39,3 +45,7 @@ For a CRM/product review, present the randomized effect table first, then the ho
 This is an independently developed portfolio research project using a public historical experiment. The stakeholder role above describes the intended decision workflow; it is **not a claim of client delivery, employment on a marketing team, or external stakeholder sign-off**.
 
 **Source of truth:** [Full evaluation report](full_evaluation.md).
+
+## Limits on interpretation
+
+The primary difference-in-means is causal under the randomized assignment assumptions; it is not an observational association requiring adjustment for confounders. No synthetic ground-truth recovery experiment or hidden-confounder sensitivity analysis is claimed. The available dataset cannot test no-interference or quantify an observational hidden-confounding bias. Individual customer effects remain unobservable, and the uplift model has not shown policy superiority.
