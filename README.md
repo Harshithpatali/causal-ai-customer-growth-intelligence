@@ -101,7 +101,7 @@ Only pre-treatment covariates are used. Outcomes are not used as model features.
 - A stratified 75/25 train/holdout split is used.
 - The targeting threshold is selected using training data.
 - Policy values are estimated on the randomized holdout using inverse-propensity weighting (IPW), with the known 2/3 pooled-email assignment probability.
-- The model policy is compared with emailing everyone and emailing nobody. The paired policy contrast and confidence interval are reported.
+- The model policy is compared with emailing everyone and emailing nobody. The paired policy contrast and confidence interval are reported. A seeded permutation diagnostic and baseline standardized-mean-difference balance utility are included in `src/causal_ai/statistics.py`; these are diagnostics, not proof of randomization or absence of confounding.
 - Qini/AUUC is presented as an exploratory ranking diagnostic, not as evidence of profitability.
 
 ### Budget scenario
@@ -118,7 +118,7 @@ The dataset contains neither delivery costs nor product contribution margins. Th
 
 ## Evaluation snapshot
 
-The reproducible analysis is documented in [the full evaluation report](reports/full_evaluation.md). Model purpose, intended use, evaluation, and limitations are summarized in the [model card](reports/model_card.md).
+The reproducible analysis is documented in [the full evaluation report](reports/full_evaluation.md). Model purpose, intended use, evaluation, and limitations are summarized in the [model card](reports/model_card.md) and the [identification and limitations note](reports/IDENTIFICATION_AND_LIMITATIONS.md).
 
 | Holdout policy | IPW estimated spend per customer |
 |---|---:|
