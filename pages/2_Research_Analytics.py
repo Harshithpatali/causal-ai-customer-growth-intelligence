@@ -11,6 +11,7 @@ st.caption("Reproducible evidence from the five-split uplift benchmark and the i
 
 summary_path = Path("reports/research_summary.json")
 forecast_path = Path("reports/spend_prediction.json")
+stats_path = Path("reports/advanced_statistics.json")
 
 if not summary_path.exists():
     st.warning("Research summary is not present yet. Run the Uplift Meta-Learner Benchmark GitHub Actions workflow.")
@@ -62,6 +63,27 @@ contrast_rows = [{"Strategy": name.replace(" vs Email everyone", ""),
                  for name, value in contrasts.items()]
 st.dataframe(pd.DataFrame(contrast_rows), use_container_width=True, hide_index=True)
 st.info("A confidence interval crossing zero does not establish a difference. The bootstrap conditions on fitted policies and does not include model-training uncertainty.")
+
+if stats_path.exists():
+    st.divider()
+    st.subheader("Advanced statistical analysis")
+    stats_report = json.loads(stats_path.read_text(encoding="utf-8"))
+    cuped = stats_report["spend_cuped"]
+    aipw = stats_report["spend_aipw"]
+    s1, s2, s3 = st.columns(3)
+    s1.metric("Welch spend ATE", "{:.3f}".format(cuped["raw_ate"]))
+    s2.metric("CUPED-adjusted ATE", "{:.3f}".format(cuped["ate"]), delta="{:.1%} variance reduction".format(cuped["variance_reduction_fraction"]))
+    s3.metric("Cross-fitted AIPW ATE", "{:.3f}".format(aipw["ate"]))
+    st.caption("CUPED 95% CI: [{:.3f}, {:.3f}] | AIPW 95% CI: [{:.3f}, {:.3f}]".format(cuped["ci_lower"], cuped["ci_upper"], aipw["ci_lower"], aipw["ci_upper"]))
+    power = stats_report["conversion_power_plan"]
+    st.write("**Prospective conversion-test planning**")
+    st.write("For a {:.3%} absolute lift from a {:.3%} baseline, the 80% power / 5% alpha normal approximation requires {:,} control and {:,} treatment observations.".format(power["absolute_effect"], power["control_rate"], power["n_control"], power["n_treatment"]))
+    balance = stats_report["randomization_balance"]
+    st.metric("Maximum absolute baseline SMD", "{:.3f}".format(balance["max_abs_smd"]))
+    tests = pd.DataFrame([{"Outcome": name.title(), "Raw p-value": stats_report[name]["p_value"], "Holm-adjusted p-value": stats_report[name]["holm_adjusted_p_value"]} for name in ("visit", "conversion", "spend")])
+    st.write("Holm correction across the three pooled outcomes")
+    st.dataframe(tests, use_container_width=True, hide_index=True)
+    st.caption("AIPW uses five-fold cross-fitted outcome regressions and the known 2/3 assignment propensity. CUPED uses pre-treatment historical spend. Power is a planning approximation.")
 
 st.subheader("Creative-level randomized effects")
 creative = summary["creative_average_effects"]
