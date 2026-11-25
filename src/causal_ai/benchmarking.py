@@ -237,6 +237,15 @@ def run_uplift_benchmark(
             n_bootstrap=n_bootstrap, seed=seed + 900,
         )
 
+    pairwise_ranking_bootstrap = {}
+    ranking_names = list(policies)
+    for i, first_name in enumerate(ranking_names):
+        for second_name in ranking_names[i + 1:]:
+            pairwise_ranking_bootstrap[first_name + " vs " + second_name] = _bootstrap_difference(
+                y, a, policies[first_name], policies[second_name], propensity,
+                n_bootstrap=n_bootstrap, seed=seed + 1200 + i * 31 + ranking_names.index(second_name),
+            )
+
     # Creative-specific randomized-arm estimates and model-implied effects.
     creative_models, creative_predictions = _creative_effect_models(train, test, seed + 100)
     creative_effects = {}
@@ -309,7 +318,8 @@ def run_uplift_benchmark(
             "auuc": "Area under sorted cumulative HT pseudo-outcome gain. Both are ranking diagnostics, not monetary profit or proof of CATE calibration.",
         },
         "binary_uplift_benchmark": ranking_results,
-        "bootstrap_policy_contrasts": bootstrap,
+        "bootstrap_policy_contrasts_vs_email_everyone": bootstrap,
+        "pairwise_ranking_policy_bootstrap_contrasts": pairwise_ranking_bootstrap,
         "multi_treatment_average_effects": creative_effects,
         "multi_treatment_targeting": creative_policy,
         "limitations": [
