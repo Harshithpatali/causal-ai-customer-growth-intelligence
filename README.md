@@ -289,6 +289,24 @@ V(policy) = mean[ I(A = policy(X)) * Y / P(A = policy(X)) ]
 
 **Bootstrap uncertainty:** policy contrasts use paired nonparametric resampling of holdout rows and percentile 95% intervals. The report includes each strategy versus emailing everyone and pairwise contrasts between the ranking strategies (including T-vs-S, T-vs-X, and learner-vs-baseline comparisons). The intervals condition on fitted models and do not include uncertainty from training, model selection, or repeated dataset collection. They should not be interpreted as a prospective deployment guarantee.
 
+### Repeated-seed stability and model diagnostics
+
+The research workflow also runs the expanded benchmark over five stratified splits:
+
+```bash
+python scripts/run_repeated_seed_diagnostics.py \
+  --seeds 21,42,63,84,105 --bootstrap 100
+```
+
+This writes:
+
+- `reports/repeated_seed_benchmark.json`: per-seed results, cross-seed means/standard deviations/ranges, winner counts, feature-importance summaries, score quantiles, and per-seed diagnostics.
+- `reports/repeated_seed_diagnostics.html`: interactive charts for policy-value stability, cumulative HT gain and its random-ranking reference, AUUC, Qini, seed-42 bootstrap policy contrasts, ExtraTrees feature importance, uplift-score histograms, and HT pseudo-outcome by predicted-uplift decile.
+
+The workflow retains the single-seed `reports/uplift_benchmark.json` run (seed 42 and 1,000 bootstrap replicates by default) and adds the five-seed diagnostics (100 bootstrap replicates per split by default). The five seeds are repeated partitions of the same 64,000-row historical experiment—not five independent randomized experiments. Cross-seed standard deviations describe sensitivity to the split and should not be presented as confidence intervals for future deployment.
+
+**Model interpretation safeguards:** feature importance is ExtraTrees impurity importance aggregated back to original features. It is predictive importance, not a causal explanation. Uplift-score histograms describe model-implied expected-spend differences. Decile summaries compare predicted ranking with holdout Horvitz-Thompson pseudo-outcomes, which are noisy and do not establish individual treatment-effect calibration. Historical-spend ranking may perform well because history predicts outcome level; that does not mean it predicts incremental treatment benefit.
+
 ### Three-arm creative analysis
 
 The multi-treatment extension preserves the randomized `No E-Mail`, `Mens E-Mail`, and `Womens E-Mail` arms. It reports observed spend differences with Welch confidence intervals for:

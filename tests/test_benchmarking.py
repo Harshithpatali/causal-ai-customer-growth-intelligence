@@ -70,6 +70,17 @@ def test_uplift_benchmark_includes_meta_learners_baselines_and_creatives(tmp_pat
         "Mens E-Mail vs No E-Mail", "Womens E-Mail vs No E-Mail"
     }
     assert output.exists()
+    assert set(result["model_feature_importance"]) == {"T-learner", "S-learner", "X-learner"}
+    for learner, importance in result["model_feature_importance"].items():
+        assert all(value >= 0 for value in importance.values())
+        assert np.isclose(sum(importance.values()), 1.0)
+    assert set(result["uplift_score_diagnostics"]) == {"T-learner", "S-learner", "X-learner"}
+    for diagnostics in result["uplift_score_diagnostics"].values():
+        assert diagnostics["histogram"]["counts"]
+        assert sum(diagnostics["histogram"]["counts"]) == 225
+        assert set(diagnostics["quantiles"]) == {"min", "p10", "p25", "p50", "p75", "p90", "max"}
+    assert len(result["uplift_score_heterogeneity_deciles"]["S-learner"]) == 10
+    assert "cumulative_curve" in ranking["S-learner"]
 
 
 def test_uplift_benchmark_rejects_invalid_segments():
