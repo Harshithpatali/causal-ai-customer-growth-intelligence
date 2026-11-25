@@ -118,7 +118,7 @@ def _build_figure(results, seeds, summary, output):
             "Cumulative HT uplift gain (mean ± 1 SD across seeds)",
             "AUUC across seeds",
             "Qini across seeds",
-            "Feature importance and model interpretation",
+            "Policy contrast vs email everyone (seed 42 bootstrap 95% CI)",
             "Mean ExtraTrees feature importance",
             "Predicted uplift-score quantiles across seeds",
             "HT pseudo-outcome by predicted-uplift decile",
