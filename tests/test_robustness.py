@@ -6,13 +6,13 @@ from causal_ai.data import FEATURES
 from causal_ai.robustness import repeated_split_robustness
 
 
-def _small_hillstrom_like_frame(n=240, seed=19):
+def _small_hillstrom_like_frame(n=500, seed=19):
     rng = np.random.default_rng(seed)
     treatment = np.tile([0, 1], n // 2)
     history = rng.uniform(10, 600, n)
     recency = rng.integers(1, 13, n)
     conversion_probability = np.clip(
-        0.035 + 0.00002 * history + treatment * 0.012, 0.01, 0.2
+        0.10 + 0.00008 * history + treatment * 0.04, 0.03, 0.35
     )
     conversion = rng.binomial(1, conversion_probability)
     spend = np.where(
