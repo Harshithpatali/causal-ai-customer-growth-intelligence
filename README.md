@@ -23,7 +23,8 @@ The deliverable is a six-page **Streamlit research dashboard**. It is intentiona
 | Executive Overview | Cohort profile, randomized-arm outcomes, average treatment effects |
 | Customer Intelligence | Pre-treatment covariates and model-implied potential outcomes |
 | Experimentation Lab | Two-proportion inference, Welch's t-test, confidence intervals |
-| Uplift Intelligence | Two-part T-learner, holdout IPW policy values, Qini-style diagnostic |
+| Uplift Intelligence | Two-part T-learner, randomized-holdout IPW policy values, exploratory Qini-style diagnostic |
+| Robustness Evaluation | Repeated stratified splits, policy-value dispersion, paired policy contrasts and targeting-share stability |
 | Budget Scenario Optimizer | Sensitivity to assumed contact cost, contribution margin, and budget |
 | AI Business Reports | Groq-generated executive narrative from aggregate experiment and holdout metrics; Markdown download |
 
