@@ -56,6 +56,24 @@ The interval includes zero. The model has not demonstrated that it improves on e
 
 Use the dashboard to learn and communicate the workflow from randomized experiments to causal ML and decision analysis. Do not use the model's individual scores as factual customer effects or execute its allocation in a real campaign without a prospective randomized policy experiment.
 
+## Meta-learner and creative benchmark extension
+
+The optional benchmark runner `python scripts/run_uplift_benchmark.py` compares T-, S-, and X-learners against seeded random, recency-first, and historical-spend-first ranking strategies on one stratified holdout. The binary meta-learners estimate pooled email versus no-email expected-spend differences. Each ranking policy is evaluated at an approximately 2/3 contact share using the randomized assignment probability.
+
+The report also includes:
+- Horvitz-Thompson cumulative-gain AUUC and Qini diagnostics with an explicitly stated random-ranking reference.
+- Paired holdout-row bootstrap percentile intervals for policy-value differences.
+- Three-arm randomized average spend contrasts for Mens E-Mail, Womens E-Mail, and No E-Mail.
+- Model-implied creative-specific effects and pairwise creative-versus-control targeting policy values.
+
+Use restrictions:
+- The three binary meta-learners are model comparisons, not proof that one learner identifies true individual effects.
+- AUUC/Qini are exploratory ranking diagnostics; the supplied random baseline is a single seeded ranking.
+- Bootstrap intervals condition on fitted models and do not capture model-training or model-selection uncertainty.
+- Creative-level observed contrasts are average randomized effects. Individual creative effects are model-implied and unobserved.
+- Policy value is expected spend per eligible customer, not profit. Contact costs and contribution margins are unavailable in the source data.
+- This benchmark uses one held-out partition from the historical dataset; it is not external validation.
+
 ## Repeat-split robustness extension
 
 An optional diagnostic in `src/causal_ai/robustness.py` refits the two-part T-learner across several seeded stratified train/test partitions and summarizes variation in targeting share, model-policy value, benchmark policy values, paired model-minus-email-everyone contrasts, and exploratory ranking diagnostics. It is invoked with `python scripts/run_robustness.py` and writes `reports/repeated_split_robustness.json`.
