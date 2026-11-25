@@ -24,9 +24,6 @@ The deliverable is a six-page **Streamlit research dashboard**. It is intentiona
 | Customer Intelligence | Pre-treatment covariates and model-implied potential outcomes |
 | Experimentation Lab | Two-proportion inference, Welch's t-test, confidence intervals |
 | Uplift Intelligence | Two-part T-learner, randomized-holdout IPW policy values, exploratory Qini-style diagnostic |
-| Robustness Evaluation | Repeated stratified splits, policy-value dispersion, paired policy contrasts and targeting-share stability |
-| Uplift Benchmark Lab | T-/S-/X-learners, random/recency/history ranking baselines, HT Qini/AUUC, paired bootstrap policy contrasts |
-| Multi-treatment Experiment | Mens E-Mail vs Womens E-Mail vs No E-Mail average effects and creative-specific targeting policies |
 | Budget Scenario Optimizer | Sensitivity to assumed contact cost, contribution margin, and budget |
 | AI Business Reports | Groq-generated executive narrative from aggregate experiment and holdout metrics; Markdown download |
 
@@ -257,7 +254,7 @@ python scripts/run_robustness.py --seeds 11,23,37,51,73 --test-size 0.25 --thres
 
 The output is written to `reports/repeated_split_robustness.json`. These are repeated partitions of the **same 64,000-row historical dataset**, not independent replications or external validation. The repeated-split report is a sensitivity diagnostic; it must not be used to choose a final model and then be described as an untouched confirmation. The primary evidence remains the frozen evaluation in [reports/full_evaluation.md](reports/full_evaluation.md).
 
-## Uplift meta-learner and multi-treatment benchmark
+## Research CLI: uplift meta-learner and multi-treatment benchmark
 
 Run the expanded benchmark after the raw Hillstrom CSV is available:
 
