@@ -30,7 +30,8 @@ def main():
     print(json.dumps({
         "design": result["design"],
         "binary_uplift_benchmark": result["binary_uplift_benchmark"],
-        "bootstrap_policy_contrasts": result["bootstrap_policy_contrasts"],
+        "bootstrap_policy_contrasts_vs_email_everyone": result["bootstrap_policy_contrasts_vs_email_everyone"],
+        "pairwise_ranking_policy_bootstrap_contrasts": result["pairwise_ranking_policy_bootstrap_contrasts"],
         "multi_treatment_average_effects": result["multi_treatment_average_effects"],
         "multi_treatment_targeting": result["multi_treatment_targeting"],
     }, indent=2))
