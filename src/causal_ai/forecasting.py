@@ -9,7 +9,6 @@ from __future__ import annotations
 import numpy as np
 import pandas as pd
 from sklearn.compose import ColumnTransformer
-from sklearn.dummy import DummyRegressor
 from sklearn.ensemble import HistGradientBoostingRegressor
 from sklearn.impute import SimpleImputer
 from sklearn.inspection import permutation_importance
@@ -97,8 +96,7 @@ def run_spend_prediction(df: pd.DataFrame, seed: int = 42, alpha: float = 0.10,
     lower = np.maximum(0.0, prediction - radius)
     upper = prediction + radius
 
-    baseline = DummyRegressor(strategy="mean")
-    baseline.fit(np.zeros((len(train_idx), 1)), y_train)
+    # Mean-only benchmark fitted on the training partition, never the test set.
     baseline_pred = np.repeat(float(y_train.mean()), len(test_idx))
 
     test_metrics = _metrics(y_test, prediction)
