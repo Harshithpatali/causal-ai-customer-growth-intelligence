@@ -268,7 +268,7 @@ Optional controls:
 python scripts/run_uplift_benchmark.py --seed 42 --test-size 0.25 --bootstrap 1000
 ```
 
-The full machine-readable report is written to `reports/uplift_benchmark.json`. The benchmark uses one stratified train/holdout partition of the same randomized experiment and compares:
+The full machine-readable report is written to `reports/uplift_benchmark.json`. To run it without consuming the Streamlit instance, open GitHub → **Actions** → **Uplift Meta-Learner Benchmark** → **Run workflow**. Choose a seed and bootstrap count; the JSON report is uploaded as the `hillstrom-uplift-benchmark` workflow artifact for 30 days. The benchmark uses one stratified train/holdout partition of the same randomized experiment and compares:
 
 | Strategy | Definition |
 |---|---|
