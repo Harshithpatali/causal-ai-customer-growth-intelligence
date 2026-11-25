@@ -2,7 +2,7 @@ import numpy as np
 import pandas as pd
 
 from causal_ai.data import FEATURES
-from scripts.run_advanced_statistics import cross_fitted_spend_predictions
+from causal_ai.advanced_statistics import cross_fitted_spend_predictions
 
 
 def test_cross_fitted_spend_predictions_are_finite_and_aligned():
