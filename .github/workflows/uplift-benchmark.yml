@@ -25,7 +25,7 @@ on:
         type: string
 
 permissions:
-  contents: read
+  contents: write
 
 jobs:
   benchmark:
@@ -74,6 +74,12 @@ jobs:
       - name: Build compact dashboard research summary
         run: |
           python scripts/build_research_summary.py
+
+      - name: Publish dashboard snapshots to the repository
+        uses: stefanzweifel/git-auto-commit-action@v5
+        with:
+          commit_message: "Publish refreshed research analytics snapshot"
+          file_pattern: reports/research_summary.json reports/spend_prediction.json reports/advanced_statistics.json
 
       - name: Upload benchmark, forecasting and diagnostics
         uses: actions/upload-artifact@v4
