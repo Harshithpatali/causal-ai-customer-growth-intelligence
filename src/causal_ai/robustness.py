@@ -129,6 +129,9 @@ def repeated_split_robustness(
         })
 
     results = pd.DataFrame(rows)
+    if results.empty:
+        raise ValueError("No split results were produced")
+
     summary = {
         "n_splits": int(len(results)),
         "seeds": seed_list,
