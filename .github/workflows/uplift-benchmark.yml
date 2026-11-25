@@ -25,7 +25,7 @@ on:
         type: string
 
 permissions:
-  contents: read
+  contents: write
 
 jobs:
   benchmark:
@@ -63,13 +63,39 @@ jobs:
             --output reports/repeated_seed_benchmark.json \
             --chart reports/repeated_seed_diagnostics.html
 
-      - name: Upload benchmark and diagnostics
+      - name: Run independent spend prediction and conformal evaluation
+        run: |
+          python scripts/run_spend_prediction.py --seed 42 --alpha 0.10
+
+      - name: Run cross-fitted AIPW, CUPED and power analysis
+        run: |
+          python scripts/run_advanced_statistics.py --seed 42 --folds 5 --mde 0.005
+
+      - name: Build compact dashboard research summary
+        run: |
+          python scripts/build_research_summary.py
+
+      - name: Publish dashboard snapshots to the repository
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add reports/research_summary.json reports/spend_prediction.json reports/advanced_statistics.json
+          if ! git diff --cached --quiet; then
+            git commit -m "Publish refreshed research analytics snapshot"
+            git push
+          fi
+
+      - name: Upload benchmark, forecasting and diagnostics
         uses: actions/upload-artifact@v4
         with:
-          name: hillstrom-uplift-research-release
+          name: hillstrom-research-analytics-release
           path: |
             reports/uplift_benchmark.json
             reports/repeated_seed_benchmark.json
             reports/repeated_seed_diagnostics.html
+            reports/spend_prediction.json
+            reports/advanced_statistics.json
+            reports/research_summary.json
+            artifacts/spend_forecaster.joblib
           if-no-files-found: error
           retention-days: 30

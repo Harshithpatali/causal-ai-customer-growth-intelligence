@@ -2,7 +2,7 @@
 
 A **data-science research project** using the Kevin Hillstrom / MineThatData randomized email experiment. The project moves from randomized experiment analysis to heterogeneous treatment-effect modelling, holdout policy evaluation, and budget-scenario sensitivity analysis.
 
-The deliverable is a six-page **Streamlit research dashboard**. It is intentionally Python- and statistics-focused: no separate API service or frontend framework is required.
+The deliverable is a **Streamlit research dashboard** plus a dedicated research-analytics page. It is intentionally Python- and statistics-focused: no separate API service or frontend framework is required.
 
 **Decision-maker brief:** [Email experiment decision brief](docs/DECISION_BRIEF.md) — surfaces the positive randomized average effect while keeping the unproven uplift targeting policy separate.
 
@@ -74,7 +74,7 @@ The project currently reports:
 - A two-part T-learner for exploratory heterogeneous expected-spend predictions.
 - IPW policy value and paired policy contrasts on a randomized holdout.
 
-It does **not** currently claim that IPW, matching, doubly robust estimation, causal forests, or meta-learners beyond the T-learner have been benchmarked. Nor does it claim a validated AUUC/Qini benchmark. The Qini-style cumulative IPW curve is a ranking diagnostic. A future observational extension should compare propensity matching/IPW and a doubly robust learner against a pre-specified adjustment set, with explicit overlap and hidden-confounding sensitivity analysis.
+The repository now benchmarks T-, S-, and X-learners, random, recency, and historical-spend rankings on a randomized holdout, with paired bootstrap contrasts and repeated-seed split-sensitivity diagnostics. It also reports a cross-fitted AIPW estimate for the randomized pooled contrast. These methods are not a substitute for a separate observational causal design; matching, hidden-confounding sensitivity analysis, and causal forests are not claimed.
 
 ## Statistical design
 

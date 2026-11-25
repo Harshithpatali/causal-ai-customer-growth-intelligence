@@ -162,3 +162,115 @@ def placebo_permutation_test(y, treatment, n_permutations=2000, seed=42):
     return {"observed_difference": observed, "p_value_two_sided": pvalue,
             "n_permutations": int(n_permutations), "seed": int(seed),
             "null_quantiles": np.quantile(permuted, [0.025, 0.5, 0.975]).tolist()}
+
+
+def aipw_average_treatment_effect(y, treatment, propensity, mu1, mu0, confidence=0.95):
+    """Cross-fitted/externally predicted AIPW ATE from supplied nuisance predictions.
+
+    The caller must obtain mu1 and mu0 without using each evaluation row's
+    outcome (for example, via cross-fitting). In this randomized experiment,
+    propensity can be the known assignment probability rather than estimated.
+    """
+    y = np.asarray(y, dtype=float)
+    t = np.asarray(treatment, dtype=int)
+    e = np.broadcast_to(np.asarray(propensity, dtype=float), y.shape)
+    m1, m0 = np.asarray(mu1, dtype=float), np.asarray(mu0, dtype=float)
+    if not (y.ndim == t.ndim == e.ndim == m1.ndim == m0.ndim == 1):
+        raise ValueError("All inputs must be one-dimensional")
+    if not (len(y) == len(t) == len(e) == len(m1) == len(m0)) or len(y) < 2:
+        raise ValueError("All inputs must have equal length of at least two")
+    if not np.isfinite(np.column_stack([y, t, e, m1, m0])).all():
+        raise ValueError("Inputs must be finite")
+    if not set(np.unique(t)).issubset({0, 1}) or not np.all((e > 0) & (e < 1)):
+        raise ValueError("Treatment must be binary and propensity strictly between zero and one")
+    influence = m1 - m0 + t * (y - m1) / e - (1 - t) * (y - m0) / (1 - e)
+    estimate = float(influence.mean())
+    se = float(influence.std(ddof=1) / np.sqrt(len(influence)))
+    critical = float(stats.norm.ppf(0.5 + confidence / 2))
+    return {
+        "ate": estimate, "standard_error": se,
+        "ci_lower": estimate - critical * se,
+        "ci_upper": estimate + critical * se,
+        "p_value": float(2 * stats.norm.sf(abs(estimate / se))) if se > 0 else 0.0,
+        "n": int(len(y)), "estimator": "augmented inverse-probability weighting",
+        "note": "Valid under consistency, positivity, and either correct propensity or both outcome regressions; nuisance predictions must be cross-fitted or external."
+    }
+
+
+def cuped_adjusted_ate(y, treatment, baseline_covariate, confidence=0.95):
+    """CUPED-style covariate adjustment using a pre-treatment baseline variable.
+
+    The covariate must be measured before assignment. The estimate is the
+    difference in adjusted outcomes; report variance reduction descriptively.
+    """
+    y = np.asarray(y, dtype=float)
+    t = np.asarray(treatment, dtype=int)
+    x = np.asarray(baseline_covariate, dtype=float)
+    if not (y.ndim == t.ndim == x.ndim == 1 and len(y) == len(t) == len(x)):
+        raise ValueError("Inputs must be one-dimensional arrays of equal length")
+    if len(y) < 4 or not np.isfinite(np.column_stack([y, t, x])).all():
+        raise ValueError("At least four finite observations are required")
+    if not set(np.unique(t)).issubset({0, 1}) or len(np.unique(t)) != 2:
+        raise ValueError("Both binary treatment groups are required")
+    variance = float(np.var(x, ddof=1))
+    theta = float(np.cov(y, x, ddof=1)[0, 1] / variance) if variance > 0 else 0.0
+    adjusted = y - theta * (x - x.mean())
+    raw = mean_difference(y, t, confidence)
+    result = mean_difference(adjusted, t, confidence)
+    raw_variance = raw["standard_error"] ** 2
+    adjusted_variance = result["standard_error"] ** 2
+    return {
+        **result,
+        "theta": theta,
+        "raw_ate": raw["ate"],
+        "raw_standard_error": raw["standard_error"],
+        "variance_reduction_fraction": float(1 - adjusted_variance / raw_variance) if raw_variance > 0 else 0.0,
+        "covariate": "baseline_covariate",
+        "note": "Use only a pre-treatment covariate. CUPED improves precision; it does not repair a flawed assignment or measurement process."
+    }
+
+
+def holm_adjust(p_values):
+    """Holm step-down family-wise error correction; preserves input order."""
+    values = np.asarray(p_values, dtype=float)
+    if values.ndim != 1 or not np.isfinite(values).all() or np.any((values < 0) | (values > 1)):
+        raise ValueError("p_values must be a finite one-dimensional array in [0, 1]")
+    m = len(values)
+    order = np.argsort(values)
+    adjusted = np.empty(m, dtype=float)
+    running = 0.0
+    for rank, index in enumerate(order):
+        running = max(running, (m - rank) * values[index])
+        adjusted[index] = min(1.0, running)
+    return adjusted.tolist()
+
+
+def two_proportion_sample_size(control_rate, treatment_rate, alpha=0.05, power=0.8,
+                               treatment_to_control_ratio=1.0):
+    """Normal-approximation sample size for a two-sided independent proportion test.
+
+    Returns required control and treatment counts. This is a planning
+    approximation; final experiment design should account for attrition,
+    clustering, finite populations, and the chosen test procedure.
+    """
+    p0, p1 = float(control_rate), float(treatment_rate)
+    r = float(treatment_to_control_ratio)
+    if not (0 < p0 < 1 and 0 < p1 < 1 and p0 != p1):
+        raise ValueError("Rates must be distinct values strictly between zero and one")
+    if not (0 < alpha < 1 and 0 < power < 1 and r > 0):
+        raise ValueError("alpha and power must be in (0,1), and allocation ratio positive")
+    pbar = (p0 + r * p1) / (1 + r)
+    z_alpha = stats.norm.ppf(1 - alpha / 2)
+    z_power = stats.norm.ppf(power)
+    numerator = (z_alpha * np.sqrt(pbar * (1-pbar) * (1 + 1/r))
+                 + z_power * np.sqrt(p0*(1-p0) + p1*(1-p1)/r)) ** 2
+    n_control = int(np.ceil(numerator / ((p1-p0) ** 2)))
+    return {
+        "n_control": n_control,
+        "n_treatment": int(np.ceil(r * n_control)),
+        "total_n": int(n_control + np.ceil(r * n_control)),
+        "control_rate": p0, "treatment_rate": p1,
+        "absolute_effect": abs(p1-p0), "alpha": float(alpha),
+        "target_power": float(power), "treatment_to_control_ratio": r,
+        "method": "two-sided normal approximation for independent proportions"
+    }
