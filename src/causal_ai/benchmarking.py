@@ -59,6 +59,23 @@ def _check_frame(df):
         raise ValueError("At least 60 rows are required for train/holdout benchmarking")
 
 
+def _aggregate_feature_importance(model):
+    """Aggregate one-hot encoded ExtraTrees importances back to source features."""
+    names = model.named_steps["prep"].get_feature_names_out()
+    values = model.named_steps["model"].feature_importances_
+    aggregated = {feature: 0.0 for feature in FEATURES}
+    for name, value in zip(names, values):
+        raw = name.split("__", 1)[-1]
+        matched = next((feature for feature in FEATURES
+                        if raw == feature or raw.startswith(feature + "_")), None)
+        if matched is not None:
+            aggregated[matched] += float(value)
+        elif raw == "__treatment":
+            aggregated["treatment"] = aggregated.get("treatment", 0.0) + float(value)
+    total = sum(aggregated.values())
+    return {key: value / total for key, value in aggregated.items()} if total else aggregated
+
+
 def _fit_binary_learners(train: pd.DataFrame, test: pd.DataFrame, seed: int):
     x_train = train[FEATURES].copy()
     x_eval = test[FEATURES].copy()
@@ -90,11 +107,26 @@ def _fit_binary_learners(train: pd.DataFrame, test: pd.DataFrame, seed: int):
     e = 2.0 / 3.0
     x_uplift = e * tau0_model.predict(x_eval) + (1.0 - e) * tau1_model.predict(x_eval)
 
-    return {
+    scores = {
         "T-learner": m1.predict(x_eval) - m0.predict(x_eval),
         "S-learner": s_uplift,
         "X-learner": x_uplift,
     }
+    importances = {
+        "T-learner": _aggregate_feature_importance(m0),
+        "S-learner": _aggregate_feature_importance(s_model),
+        "X-learner": _aggregate_feature_importance(tau0_model),
+    }
+    t_importance = _aggregate_feature_importance(m1)
+    x_importance = _aggregate_feature_importance(tau1_model)
+    for feature in importances["T-learner"]:
+        importances["T-learner"][feature] = (
+            importances["T-learner"][feature] + t_importance[feature]
+        ) / 2
+        importances["X-learner"][feature] = (
+            importances["X-learner"][feature] + x_importance[feature]
+        ) / 2
+    return scores, importances
 
 
 def _bootstrap_difference(y, treatment, policy_a, policy_b, propensity,
@@ -195,7 +227,7 @@ def run_uplift_benchmark(
         stratify=data["segment"],
     )
     train, test = data.iloc[train_idx].copy(), data.iloc[test_idx].copy()
-    uplift_scores = _fit_binary_learners(train, test, seed)
+    uplift_scores, feature_importance = _fit_binary_learners(train, test, seed)
     y = test["spend"].astype(float).to_numpy()
     a = (test["segment"] != "No E-Mail").astype(int).to_numpy()
     propensity = 2.0 / 3.0
@@ -215,6 +247,11 @@ def run_uplift_benchmark(
         value = evaluate_policy_ipw(y, a, policy, propensity)
         curve = qini_curve(y, a, score, propensity=propensity)
         ranking_results[name] = {
+            "cumulative_curve": {
+                "fraction": curve["fraction"],
+                "gain": curve["gain"],
+                "random_gain": curve["random_gain"],
+            },
             "contact_share": float(policy.mean()),
             "policy_value_ipw": value,
             "auuc_ht": curve["auuc"],
@@ -228,6 +265,51 @@ def run_uplift_benchmark(
                 "gain, with x equal to the fraction of holdout customers targeted."
             ),
         }
+
+    # Descriptive diagnostics: score distributions and HT pseudo-outcome
+    # heterogeneity by predicted-uplift rank. These are not CATE calibration.
+    pseudo_outcome = (a * y / propensity) - ((1 - a) * y / (1 - propensity))
+    score_diagnostics = {}
+    heterogeneity = {}
+    for name, score in uplift_scores.items():
+        score = np.asarray(score, dtype=float)
+        edges = np.unique(np.quantile(score, np.linspace(0, 1, 41)))
+        if len(edges) < 2:
+            edges = np.array([score[0] - 1e-9, score[0] + 1e-9])
+        counts, edges = np.histogram(score, bins=edges)
+        quantiles = np.quantile(score, [0, .1, .25, .5, .75, .9, 1])
+        score_diagnostics[name] = {
+            "mean": float(np.mean(score)),
+            "standard_deviation": float(np.std(score, ddof=1)),
+            "positive_share": float(np.mean(score > 0)),
+            "quantiles": {
+                "min": float(quantiles[0]), "p10": float(quantiles[1]),
+                "p25": float(quantiles[2]), "p50": float(quantiles[3]),
+                "p75": float(quantiles[4]), "p90": float(quantiles[5]),
+                "max": float(quantiles[6]),
+            },
+            "spearman_correlation_with_history": float(
+                pd.Series(score).corr(pd.Series(test["history"].to_numpy()), method="spearman")
+            ),
+            "histogram": {
+                "bin_edges": edges.astype(float).tolist(),
+                "counts": counts.astype(int).tolist(),
+            },
+        }
+        decile = pd.Series(score).rank(method="first").pipe(
+            lambda values: pd.qcut(values, 10, labels=False) + 1
+        )
+        rows = []
+        for decile_id in range(1, 11):
+            mask = decile.to_numpy() == decile_id
+            rows.append({
+                "decile": decile_id,
+                "n": int(mask.sum()),
+                "mean_predicted_uplift": float(np.mean(score[mask])),
+                "mean_ht_pseudo_outcome": float(np.mean(pseudo_outcome[mask])),
+                "mean_history": float(np.mean(test["history"].to_numpy()[mask])),
+            })
+        heterogeneity[name] = rows
 
     bootstrap = {}
     for name, policy in policies.items():
@@ -319,6 +401,15 @@ def run_uplift_benchmark(
             "auuc": "Area under sorted cumulative HT pseudo-outcome gain. Both are ranking diagnostics, not monetary profit or proof of CATE calibration.",
         },
         "binary_uplift_benchmark": ranking_results,
+        "model_feature_importance": feature_importance,
+        "uplift_score_diagnostics": score_diagnostics,
+        "uplift_score_heterogeneity_deciles": heterogeneity,
+        "diagnostic_interpretation": {
+            "feature_importance": "ExtraTrees impurity importance aggregated over one-hot encoded source features. T/X values average their two arm-specific models; these are predictive importances, not causal effect explanations.",
+            "score_histograms": "Distributions of model-implied expected-spend differences on the holdout; these scores are not individually observed treatment effects.",
+            "heterogeneity_deciles": "Holdout rows grouped by predicted uplift rank. Mean HT pseudo-outcome is a noisy descriptive check, not a calibrated CATE estimate or confirmatory subgroup effect.",
+            "history_correlation": "Spearman association between predicted uplift score and pre-treatment historical spend; association does not establish why a policy ranks customers well.",
+        },
         "bootstrap_policy_contrasts_vs_email_everyone": bootstrap,
         "pairwise_ranking_policy_bootstrap_contrasts": pairwise_ranking_bootstrap,
         "multi_treatment_average_effects": creative_effects,
