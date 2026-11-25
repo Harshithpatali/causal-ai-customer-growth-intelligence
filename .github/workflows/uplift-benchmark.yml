@@ -58,8 +58,8 @@ jobs:
       - name: Run repeated-seed stability and diagnostics
         run: |
           python scripts/run_repeated_seed_diagnostics.py \
-            --seeds "\${{ inputs.diagnostic_seeds }}" \
-            --bootstrap "\${{ inputs.diagnostic_bootstrap }}" \
+            --seeds "${{ inputs.diagnostic_seeds }}" \
+            --bootstrap "${{ inputs.diagnostic_bootstrap }}" \
             --output reports/repeated_seed_benchmark.json \
             --chart reports/repeated_seed_diagnostics.html
 
