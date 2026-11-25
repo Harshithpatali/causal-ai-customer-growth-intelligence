@@ -53,10 +53,12 @@ def test_uplift_benchmark_includes_meta_learners_baselines_and_creatives(tmp_pat
         assert np.isfinite(values["qini_ht"])
         assert "policy_value_ipw" in values
 
-    assert "T-learner vs Email everyone" in result["bootstrap_policy_contrasts"]
-    interval = result["bootstrap_policy_contrasts"]["T-learner vs Email everyone"]
+    assert "T-learner vs Email everyone" in result["bootstrap_policy_contrasts_vs_email_everyone"]
+    interval = result["bootstrap_policy_contrasts_vs_email_everyone"]["T-learner vs Email everyone"]
     assert interval["bootstrap_ci_lower"] <= interval["bootstrap_ci_upper"]
     assert interval["bootstrap_replicates"] >= 100
+    assert "T-learner vs S-learner" in result["pairwise_ranking_policy_bootstrap_contrasts"]
+    assert "T-learner vs Random (seeded)" in result["pairwise_ranking_policy_bootstrap_contrasts"]
 
     creative = result["multi_treatment_average_effects"]
     assert set(creative) == {
