@@ -21,7 +21,7 @@ from sklearn.pipeline import Pipeline
 from sklearn.preprocessing import OneHotEncoder, StandardScaler
 
 from .data import FEATURES
-from .modeling import _make_preprocessor, compare_policy_ipw, evaluate_policy_ipw, qini_curve
+from .modeling import compare_policy_ipw, evaluate_policy_ipw, qini_curve
 
 SEGMENTS = ("No E-Mail", "Mens E-Mail", "Womens E-Mail")
 
@@ -185,6 +185,8 @@ def run_uplift_benchmark(
     _check_frame(df)
     if not 0 < test_size < 1:
         raise ValueError("test_size must be between 0 and 1")
+    if n_bootstrap < 100:
+        raise ValueError("Use at least 100 bootstrap replicates")
 
     data = df.reset_index(drop=True).copy()
     train_idx, test_idx = train_test_split(
