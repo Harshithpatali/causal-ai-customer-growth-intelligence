@@ -25,6 +25,8 @@ The deliverable is a six-page **Streamlit research dashboard**. It is intentiona
 | Experimentation Lab | Two-proportion inference, Welch's t-test, confidence intervals |
 | Uplift Intelligence | Two-part T-learner, randomized-holdout IPW policy values, exploratory Qini-style diagnostic |
 | Robustness Evaluation | Repeated stratified splits, policy-value dispersion, paired policy contrasts and targeting-share stability |
+| Uplift Benchmark Lab | T-/S-/X-learners, random/recency/history ranking baselines, HT Qini/AUUC, paired bootstrap policy contrasts |
+| Multi-treatment Experiment | Mens E-Mail vs Womens E-Mail vs No E-Mail average effects and creative-specific targeting policies |
 | Budget Scenario Optimizer | Sensitivity to assumed contact cost, contribution margin, and budget |
 | AI Business Reports | Groq-generated executive narrative from aggregate experiment and holdout metrics; Markdown download |
 
@@ -201,10 +203,13 @@ app.py                       Streamlit research dashboard
 src/causal_ai/data.py        Dataset loading and validation
 src/causal_ai/statistics.py  A/B test estimators and inference
 src/causal_ai/modeling.py    T-learner, diagnostics, IPW evaluation
+src/causal_ai/benchmarking.py Meta-learners, ranking baselines, bootstrap, 3-arm analysis
 src/causal_ai/optimization.py
                              Budget scenario arithmetic
 src/causal_ai/pipeline.py    Reproducible analysis pipeline
 scripts/run_pipeline.py     One-command model training
+scripts/run_uplift_benchmark.py
+                             Meta-learner and creative benchmark runner
 reports/                     Evaluation report and data profile
 tests/                       Statistical and modelling tests
 configs/                      Reproducible analysis assumptions
@@ -251,6 +256,53 @@ python scripts/run_robustness.py --seeds 11,23,37,51,73 --test-size 0.25 --thres
 ```
 
 The output is written to `reports/repeated_split_robustness.json`. These are repeated partitions of the **same 64,000-row historical dataset**, not independent replications or external validation. The repeated-split report is a sensitivity diagnostic; it must not be used to choose a final model and then be described as an untouched confirmation. The primary evidence remains the frozen evaluation in [reports/full_evaluation.md](reports/full_evaluation.md).
+
+## Uplift meta-learner and multi-treatment benchmark
+
+Run the expanded benchmark after the raw Hillstrom CSV is available:
+
+```bash
+python scripts/run_uplift_benchmark.py
+```
+
+Optional controls:
+
+```bash
+python scripts/run_uplift_benchmark.py --seed 42 --test-size 0.25 --bootstrap 1000
+```
+
+The full machine-readable report is written to `reports/uplift_benchmark.json`. The benchmark uses one stratified train/holdout partition of the same randomized experiment and compares:
+
+| Strategy | Definition |
+|---|---|
+| T-learner | Separate ExtraTrees expected-spend outcome models for pooled email and control; predict the difference |
+| S-learner | One expected-spend model with treatment as an input; predict each customer under both assignments |
+| X-learner | Impute effects from the two outcome models, fit arm-specific effect models, and combine using known propensity |
+| Random | Seeded random ranking |
+| Recency | Rank lower recency values first (more recent purchase) |
+| Historical spend | Rank higher pre-treatment historical spend first |
+
+All ranking strategies target the same approximate 2/3 contact share, matching the pooled email assignment share. Policy value is estimated on the untouched holdout using the Horvitz-Thompson inverse-propensity-weighted estimator:
+
+```text
+V(policy) = mean[ I(A = policy(X)) * Y / P(A = policy(X)) ]
+```
+
+**Qini and AUUC definitions:** for each ranking, construct the Horvitz-Thompson pseudo-outcome `A*Y/e - (1-A)*Y/(1-e)`, sort customers by predicted score, and cumulatively sum the pseudo-outcome. AUUC is the trapezoidal area under that cumulative gain curve. Qini is the area between that curve and the straight-line gain expected from random ranking. These are ranking diagnostics, not profit estimates, CATE calibration scores, or proof of policy superiority. The random-ranking comparator is one seeded realization; repeat the seed to characterize its Monte Carlo variation.
+
+**Bootstrap uncertainty:** policy contrasts use paired nonparametric resampling of holdout rows and percentile 95% intervals. The intervals condition on fitted models and do not include uncertainty from training, model selection, or repeated dataset collection. They should not be interpreted as a prospective deployment guarantee.
+
+### Three-arm creative analysis
+
+The multi-treatment extension preserves the randomized `No E-Mail`, `Mens E-Mail`, and `Womens E-Mail` arms. It reports observed spend differences with Welch confidence intervals for:
+
+- Mens E-Mail versus No E-Mail.
+- Womens E-Mail versus No E-Mail.
+- Mens E-Mail versus Womens E-Mail.
+
+A separate three-arm outcome-model T-learner predicts expected spend under each creative and calculates model-implied pairwise effects. Creative-specific targeting policies are evaluated against control within each two-arm subset, using the known 1/2 conditional assignment probability and a 50% contact share.
+
+The observed arm-level contrasts are randomized average effects. The model-implied customer-level contrasts are exploratory and are not individually observed. The benchmark does not claim that one creative is universally optimal or that the targeting policies are profitable.
 
 ## Limitations and next research steps
 
