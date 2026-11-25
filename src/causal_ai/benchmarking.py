@@ -60,20 +60,21 @@ def _check_frame(df):
 
 
 def _fit_binary_learners(train: pd.DataFrame, seed: int):
-    x = train[FEATURES].copy()
+    x_train = train[FEATURES].copy()
+    x_eval = test[FEATURES].copy()
     y = train["spend"].astype(float).to_numpy()
     a = (train["segment"] != "No E-Mail").astype(int).to_numpy()
     m0 = _regressor(seed)
     m1 = _regressor(seed + 1)
-    m0.fit(x.loc[a == 0], y[a == 0])
-    m1.fit(x.loc[a == 1], y[a == 1])
+    m0.fit(x_train.loc[a == 0], y[a == 0])
+    m1.fit(x_train.loc[a == 1], y[a == 1])
 
     # S-learner: one outcome model with randomized treatment as an input.
-    xs = x.copy()
+    xs = x_train.copy()
     xs["__treatment"] = a
     s_model = _regressor(seed + 2, include_treatment=True)
     s_model.fit(xs, y)
-    x0, x1 = x.copy(), x.copy()
+    x0, x1 = x_eval.copy(), x_eval.copy()
     x0["__treatment"] = 0
     x1["__treatment"] = 1
     s_uplift = s_model.predict(x1) - s_model.predict(x0)
@@ -84,13 +85,13 @@ def _fit_binary_learners(train: pd.DataFrame, seed: int):
     tau_control = m1.predict(x.loc[a == 0]) - y[a == 0]
     tau1_model = _regressor(seed + 3)
     tau0_model = _regressor(seed + 4)
-    tau1_model.fit(x.loc[a == 1], tau_treated)
-    tau0_model.fit(x.loc[a == 0], tau_control)
+    tau1_model.fit(x_train.loc[a == 1], tau_treated)
+    tau0_model.fit(x_train.loc[a == 0], tau_control)
     e = 2.0 / 3.0
-    x_uplift = e * tau0_model.predict(x) + (1.0 - e) * tau1_model.predict(x)
+    x_uplift = e * tau0_model.predict(x_eval) + (1.0 - e) * tau1_model.predict(x_eval)
 
     return {
-        "T-learner": m1.predict(x) - m0.predict(x),
+        "T-learner": m1.predict(x_eval) - m0.predict(x_eval),
         "S-learner": s_uplift,
         "X-learner": x_uplift,
     }
