@@ -49,26 +49,27 @@ def _aggregate(results, seeds):
         }
 
     winner_counts = {
-        metric: {
+        "policy_value": {
             name: sum(
-                max(names, key=lambda n: run["binary_uplift_benchmark"][n][key]) == name
+                max(names, key=lambda n: run["binary_uplift_benchmark"][n]["policy_value_ipw"]["value"]) == name
                 for run in results
             )
             for name in names
-        }
-        for metric, key in (
-            ("policy_value", "policy_value_ipw"),
-            ("auuc", "auuc_ht"),
-            ("qini", "qini_ht"),
-        )
-    }
-    # Policy-value ranking uses the value field nested in policy_value_ipw.
-    winner_counts["policy_value"] = {
-        name: sum(
-            max(names, key=lambda n: run["binary_uplift_benchmark"][n]["policy_value_ipw"]["value"]) == name
-            for run in results
-        )
-        for name in names
+        },
+        "auuc": {
+            name: sum(
+                max(names, key=lambda n: run["binary_uplift_benchmark"][n]["auuc_ht"]) == name
+                for run in results
+            )
+            for name in names
+        },
+        "qini": {
+            name: sum(
+                max(names, key=lambda n: run["binary_uplift_benchmark"][n]["qini_ht"]) == name
+                for run in results
+            )
+            for name in names
+        },
     }
 
     feature_names = list(results[0]["model_feature_importance"]["S-learner"])
@@ -117,7 +118,7 @@ def _build_figure(results, seeds, summary, output):
             "Cumulative HT uplift gain (mean ± 1 SD across seeds)",
             "AUUC across seeds",
             "Qini across seeds",
-            "Policy contrast vs email everyone (seed 42 bootstrap 95% CI)",
+            "Feature importance and model interpretation",
             "Mean ExtraTrees feature importance",
             "Predicted uplift-score quantiles across seeds",
             "HT pseudo-outcome by predicted-uplift decile",
@@ -166,8 +167,8 @@ def _build_figure(results, seeds, summary, output):
             error_y={"type": "data", "symmetric": False,
                      "array": [contrast["bootstrap_ci_upper"] - center],
                      "arrayminus": [center - contrast["bootstrap_ci_lower"]]},
-                showlegend=False,
-        ), row=2, col=2)
+            showlegend=False,
+        ), row=4, col=2)
 
     for learner in learners:
         items = summary["mean_feature_importance"][learner]
@@ -209,6 +210,7 @@ def _build_figure(results, seeds, summary, output):
     fig.update_yaxes(title_text="Expected-spend uplift score", row=3, col=2)
     fig.update_xaxes(title_text="Predicted-uplift decile (low to high)", row=4, col=1)
     fig.update_yaxes(title_text="Mean HT pseudo-outcome", row=4, col=1)
+    fig.update_yaxes(title_text="Targeted minus email-everyone value", row=4, col=2)
     fig.update_layout(
         title="Hillstrom uplift benchmark — repeated-seed diagnostics",
         height=1900, width=1500, boxmode="group",
