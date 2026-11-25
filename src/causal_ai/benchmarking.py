@@ -59,7 +59,7 @@ def _check_frame(df):
         raise ValueError("At least 60 rows are required for train/holdout benchmarking")
 
 
-def _fit_binary_learners(train: pd.DataFrame, seed: int):
+def _fit_binary_learners(train: pd.DataFrame, test: pd.DataFrame, seed: int):
     x_train = train[FEATURES].copy()
     x_eval = test[FEATURES].copy()
     y = train["spend"].astype(float).to_numpy()
@@ -81,8 +81,8 @@ def _fit_binary_learners(train: pd.DataFrame, seed: int):
 
     # X-learner: impute treatment effects in each arm, fit effect models,
     # then combine with the known treatment propensity.
-    tau_treated = y[a == 1] - m0.predict(x.loc[a == 1])
-    tau_control = m1.predict(x.loc[a == 0]) - y[a == 0]
+    tau_treated = y[a == 1] - m0.predict(x_train.loc[a == 1])
+    tau_control = m1.predict(x_train.loc[a == 0]) - y[a == 0]
     tau1_model = _regressor(seed + 3)
     tau0_model = _regressor(seed + 4)
     tau1_model.fit(x_train.loc[a == 1], tau_treated)
@@ -195,7 +195,7 @@ def run_uplift_benchmark(
         stratify=data["segment"],
     )
     train, test = data.iloc[train_idx].copy(), data.iloc[test_idx].copy()
-    uplift_scores = _fit_binary_learners(train, seed)
+    uplift_scores = _fit_binary_learners(train, test, seed)
     y = test["spend"].astype(float).to_numpy()
     a = (test["segment"] != "No E-Mail").astype(int).to_numpy()
     propensity = 2.0 / 3.0
