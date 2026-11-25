@@ -67,6 +67,10 @@ jobs:
         run: |
           python scripts/run_spend_prediction.py --seed 42 --alpha 0.10
 
+      - name: Run cross-fitted AIPW, CUPED and power analysis
+        run: |
+          python scripts/run_advanced_statistics.py --seed 42 --folds 5 --mde 0.005
+
       - name: Build compact dashboard research summary
         run: |
           python scripts/build_research_summary.py
@@ -80,6 +84,7 @@ jobs:
             reports/repeated_seed_benchmark.json
             reports/repeated_seed_diagnostics.html
             reports/spend_prediction.json
+            reports/advanced_statistics.json
             reports/research_summary.json
             artifacts/spend_forecaster.joblib
           if-no-files-found: error
