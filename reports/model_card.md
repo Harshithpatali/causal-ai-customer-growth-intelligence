@@ -56,6 +56,16 @@ The interval includes zero. The model has not demonstrated that it improves on e
 
 Use the dashboard to learn and communicate the workflow from randomized experiments to causal ML and decision analysis. Do not use the model's individual scores as factual customer effects or execute its allocation in a real campaign without a prospective randomized policy experiment.
 
+## Repeat-split robustness extension
+
+An optional diagnostic in `src/causal_ai/robustness.py` refits the two-part T-learner across several seeded stratified train/test partitions and summarizes variation in targeting share, model-policy value, benchmark policy values, paired model-minus-email-everyone contrasts, and exploratory ranking diagnostics. It is invoked with `python scripts/run_robustness.py` and writes `reports/repeated_split_robustness.json`.
+
+Interpretation safeguards:
+- Repeated splits reuse the same historical observations and are not independent experiments.
+- Their dispersion describes sensitivity to partition choice; it is not a confidence interval for deployment performance.
+- The policy threshold and modelling procedure are fixed across splits; do not select a model from these diagnostics and then report the same splits as confirmatory evidence.
+- A prospective randomized policy experiment on a new eligible population remains necessary before operational targeting.
+
 ## Recommended next validation
 
 1. Repeat evaluation over multiple stratified random seeds.
