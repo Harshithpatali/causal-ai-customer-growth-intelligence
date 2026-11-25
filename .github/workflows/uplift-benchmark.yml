@@ -9,9 +9,19 @@ on:
         default: "42"
         type: string
       bootstrap:
-        description: Number of paired holdout bootstrap replicates (minimum 100)
+        description: Paired holdout bootstrap replicates for the primary seed (minimum 100)
         required: true
         default: "1000"
+        type: string
+      diagnostic_seeds:
+        description: Comma-separated seeds for repeated-split stability
+        required: true
+        default: "21,42,63,84,105"
+        type: string
+      diagnostic_bootstrap:
+        description: Paired bootstrap replicates per diagnostic split (minimum 100)
+        required: true
+        default: "100"
         type: string
 
 permissions:
@@ -20,7 +30,7 @@ permissions:
 jobs:
   benchmark:
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    timeout-minutes: 60
     steps:
       - name: Check out repository
         uses: actions/checkout@v4
@@ -45,10 +55,21 @@ jobs:
             --bootstrap "${{ inputs.bootstrap }}" \
             --output reports/uplift_benchmark.json
 
-      - name: Upload benchmark report
+      - name: Run repeated-seed stability and diagnostics
+        run: |
+          python scripts/run_repeated_seed_diagnostics.py \
+            --seeds "\${{ inputs.diagnostic_seeds }}" \
+            --bootstrap "\${{ inputs.diagnostic_bootstrap }}" \
+            --output reports/repeated_seed_benchmark.json \
+            --chart reports/repeated_seed_diagnostics.html
+
+      - name: Upload benchmark and diagnostics
         uses: actions/upload-artifact@v4
         with:
-          name: hillstrom-uplift-benchmark
-          path: reports/uplift_benchmark.json
+          name: hillstrom-uplift-research-release
+          path: |
+            reports/uplift_benchmark.json
+            reports/repeated_seed_benchmark.json
+            reports/repeated_seed_diagnostics.html
           if-no-files-found: error
           retention-days: 30
