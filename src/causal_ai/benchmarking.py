@@ -13,9 +13,12 @@ from pathlib import Path
 import numpy as np
 import pandas as pd
 from scipy.stats import t as student_t
+from sklearn.compose import ColumnTransformer
 from sklearn.ensemble import ExtraTreesRegressor
+from sklearn.impute import SimpleImputer
 from sklearn.model_selection import train_test_split
 from sklearn.pipeline import Pipeline
+from sklearn.preprocessing import OneHotEncoder, StandardScaler
 
 from .data import FEATURES
 from .modeling import _make_preprocessor, compare_policy_ipw, evaluate_policy_ipw, qini_curve
@@ -23,9 +26,19 @@ from .modeling import _make_preprocessor, compare_policy_ipw, evaluate_policy_ip
 SEGMENTS = ("No E-Mail", "Mens E-Mail", "Womens E-Mail")
 
 
-def _regressor(seed: int):
+def _regressor(seed: int, include_treatment=False):
+    numeric = ["recency", "history", "mens", "womens", "newbie"]
+    if include_treatment:
+        numeric.append("__treatment")
+    categorical = ["history_segment", "zip_code", "channel"]
+    preprocessor = ColumnTransformer([
+        ("num", Pipeline([("imputer", SimpleImputer(strategy="median")),
+                          ("scale", StandardScaler())]), numeric),
+        ("cat", Pipeline([("imputer", SimpleImputer(strategy="most_frequent")),
+                          ("onehot", OneHotEncoder(handle_unknown="ignore"))]), categorical),
+    ])
     return Pipeline([
-        ("prep", _make_preprocessor()),
+        ("prep", preprocessor),
         ("model", ExtraTreesRegressor(
             n_estimators=160, min_samples_leaf=8, max_features=0.9,
             random_state=seed, n_jobs=-1,
@@ -58,7 +71,7 @@ def _fit_binary_learners(train: pd.DataFrame, seed: int):
     # S-learner: one outcome model with randomized treatment as an input.
     xs = x.copy()
     xs["__treatment"] = a
-    s_model = _regressor(seed + 2)
+    s_model = _regressor(seed + 2, include_treatment=True)
     s_model.fit(xs, y)
     x0, x1 = x.copy(), x.copy()
     x0["__treatment"] = 0
