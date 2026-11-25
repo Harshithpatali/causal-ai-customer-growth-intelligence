@@ -76,10 +76,14 @@ jobs:
           python scripts/build_research_summary.py
 
       - name: Publish dashboard snapshots to the repository
-        uses: stefanzweifel/git-auto-commit-action@v5
-        with:
-          commit_message: "Publish refreshed research analytics snapshot"
-          file_pattern: reports/research_summary.json reports/spend_prediction.json reports/advanced_statistics.json
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add reports/research_summary.json reports/spend_prediction.json reports/advanced_statistics.json
+          if ! git diff --cached --quiet; then
+            git commit -m "Publish refreshed research analytics snapshot"
+            git push
+          fi
 
       - name: Upload benchmark, forecasting and diagnostics
         uses: actions/upload-artifact@v4
