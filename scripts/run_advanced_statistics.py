@@ -4,30 +4,14 @@ import json
 from pathlib import Path
 
 import numpy as np
-from sklearn.model_selection import StratifiedKFold
 
 from causal_ai.data import FEATURES, load_data, validate_data
-from causal_ai.forecasting import _make_model
+from causal_ai.advanced_statistics import cross_fitted_spend_predictions
 from causal_ai.statistics import (
     aipw_average_treatment_effect, cuped_adjusted_ate, holm_adjust,
     randomized_assignment_diagnostics, two_proportion_sample_size,
     two_proportion_test, mean_difference,
 )
-
-
-def cross_fitted_spend_predictions(df, seed=42, folds=5):
-    X = df[FEATURES]
-    y = df["spend"].astype(float).to_numpy()
-    t = df["treatment"].astype(int).to_numpy()
-    mu1, mu0 = np.empty(len(df)), np.empty(len(df))
-    splitter = StratifiedKFold(n_splits=folds, shuffle=True, random_state=seed)
-    for train_idx, valid_idx in splitter.split(X, t):
-        for arm, target in ((0, mu0), (1, mu1)):
-            arm_train = train_idx[t[train_idx] == arm]
-            model = _make_model(seed + arm)
-            model.fit(X.iloc[arm_train], y[arm_train])
-            target[valid_idx] = np.maximum(0.0, model.predict(X.iloc[valid_idx]))
-    return mu1, mu0
 
 
 def run_advanced_statistics(df, seed=42, folds=5, mde=0.005):
