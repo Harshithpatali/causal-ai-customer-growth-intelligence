@@ -13,19 +13,32 @@ from pathlib import Path
 import numpy as np
 import pandas as pd
 from scipy.stats import t as student_t
+from sklearn.compose import ColumnTransformer
 from sklearn.ensemble import ExtraTreesRegressor
+from sklearn.impute import SimpleImputer
 from sklearn.model_selection import train_test_split
 from sklearn.pipeline import Pipeline
+from sklearn.preprocessing import OneHotEncoder, StandardScaler
 
 from .data import FEATURES
-from .modeling import _make_preprocessor, compare_policy_ipw, evaluate_policy_ipw, qini_curve
+from .modeling import compare_policy_ipw, evaluate_policy_ipw, qini_curve
 
 SEGMENTS = ("No E-Mail", "Mens E-Mail", "Womens E-Mail")
 
 
-def _regressor(seed: int):
+def _regressor(seed: int, include_treatment=False):
+    numeric = ["recency", "history", "mens", "womens", "newbie"]
+    if include_treatment:
+        numeric.append("__treatment")
+    categorical = ["history_segment", "zip_code", "channel"]
+    preprocessor = ColumnTransformer([
+        ("num", Pipeline([("imputer", SimpleImputer(strategy="median")),
+                          ("scale", StandardScaler())]), numeric),
+        ("cat", Pipeline([("imputer", SimpleImputer(strategy="most_frequent")),
+                          ("onehot", OneHotEncoder(handle_unknown="ignore"))]), categorical),
+    ])
     return Pipeline([
-        ("prep", _make_preprocessor()),
+        ("prep", preprocessor),
         ("model", ExtraTreesRegressor(
             n_estimators=160, min_samples_leaf=8, max_features=0.9,
             random_state=seed, n_jobs=-1,
@@ -46,38 +59,39 @@ def _check_frame(df):
         raise ValueError("At least 60 rows are required for train/holdout benchmarking")
 
 
-def _fit_binary_learners(train: pd.DataFrame, seed: int):
-    x = train[FEATURES].copy()
+def _fit_binary_learners(train: pd.DataFrame, test: pd.DataFrame, seed: int):
+    x_train = train[FEATURES].copy()
+    x_eval = test[FEATURES].copy()
     y = train["spend"].astype(float).to_numpy()
     a = (train["segment"] != "No E-Mail").astype(int).to_numpy()
     m0 = _regressor(seed)
     m1 = _regressor(seed + 1)
-    m0.fit(x.loc[a == 0], y[a == 0])
-    m1.fit(x.loc[a == 1], y[a == 1])
+    m0.fit(x_train.loc[a == 0], y[a == 0])
+    m1.fit(x_train.loc[a == 1], y[a == 1])
 
     # S-learner: one outcome model with randomized treatment as an input.
-    xs = x.copy()
+    xs = x_train.copy()
     xs["__treatment"] = a
-    s_model = _regressor(seed + 2)
+    s_model = _regressor(seed + 2, include_treatment=True)
     s_model.fit(xs, y)
-    x0, x1 = x.copy(), x.copy()
+    x0, x1 = x_eval.copy(), x_eval.copy()
     x0["__treatment"] = 0
     x1["__treatment"] = 1
     s_uplift = s_model.predict(x1) - s_model.predict(x0)
 
     # X-learner: impute treatment effects in each arm, fit effect models,
     # then combine with the known treatment propensity.
-    tau_treated = y[a == 1] - m0.predict(x.loc[a == 1])
-    tau_control = m1.predict(x.loc[a == 0]) - y[a == 0]
+    tau_treated = y[a == 1] - m0.predict(x_train.loc[a == 1])
+    tau_control = m1.predict(x_train.loc[a == 0]) - y[a == 0]
     tau1_model = _regressor(seed + 3)
     tau0_model = _regressor(seed + 4)
-    tau1_model.fit(x.loc[a == 1], tau_treated)
-    tau0_model.fit(x.loc[a == 0], tau_control)
+    tau1_model.fit(x_train.loc[a == 1], tau_treated)
+    tau0_model.fit(x_train.loc[a == 0], tau_control)
     e = 2.0 / 3.0
-    x_uplift = e * tau0_model.predict(x) + (1.0 - e) * tau1_model.predict(x)
+    x_uplift = e * tau0_model.predict(x_eval) + (1.0 - e) * tau1_model.predict(x_eval)
 
     return {
-        "T-learner": m1.predict(x) - m0.predict(x),
+        "T-learner": m1.predict(x_eval) - m0.predict(x_eval),
         "S-learner": s_uplift,
         "X-learner": x_uplift,
     }
@@ -172,6 +186,8 @@ def run_uplift_benchmark(
     _check_frame(df)
     if not 0 < test_size < 1:
         raise ValueError("test_size must be between 0 and 1")
+    if n_bootstrap < 100:
+        raise ValueError("Use at least 100 bootstrap replicates")
 
     data = df.reset_index(drop=True).copy()
     train_idx, test_idx = train_test_split(
@@ -179,7 +195,7 @@ def run_uplift_benchmark(
         stratify=data["segment"],
     )
     train, test = data.iloc[train_idx].copy(), data.iloc[test_idx].copy()
-    uplift_scores = _fit_binary_learners(train, seed)
+    uplift_scores = _fit_binary_learners(train, test, seed)
     y = test["spend"].astype(float).to_numpy()
     a = (test["segment"] != "No E-Mail").astype(int).to_numpy()
     propensity = 2.0 / 3.0
@@ -221,6 +237,15 @@ def run_uplift_benchmark(
             y, a, policy, np.ones(len(test), dtype=int), propensity,
             n_bootstrap=n_bootstrap, seed=seed + 900,
         )
+
+    pairwise_ranking_bootstrap = {}
+    ranking_names = list(policies)
+    for i, first_name in enumerate(ranking_names):
+        for second_name in ranking_names[i + 1:]:
+            pairwise_ranking_bootstrap[first_name + " vs " + second_name] = _bootstrap_difference(
+                y, a, policies[first_name], policies[second_name], propensity,
+                n_bootstrap=n_bootstrap, seed=seed + 1200 + i * 31 + ranking_names.index(second_name),
+            )
 
     # Creative-specific randomized-arm estimates and model-implied effects.
     creative_models, creative_predictions = _creative_effect_models(train, test, seed + 100)
@@ -294,7 +319,8 @@ def run_uplift_benchmark(
             "auuc": "Area under sorted cumulative HT pseudo-outcome gain. Both are ranking diagnostics, not monetary profit or proof of CATE calibration.",
         },
         "binary_uplift_benchmark": ranking_results,
-        "bootstrap_policy_contrasts": bootstrap,
+        "bootstrap_policy_contrasts_vs_email_everyone": bootstrap,
+        "pairwise_ranking_policy_bootstrap_contrasts": pairwise_ranking_bootstrap,
         "multi_treatment_average_effects": creative_effects,
         "multi_treatment_targeting": creative_policy,
         "limitations": [
