@@ -120,7 +120,7 @@ def _build_figure(results, seeds, summary, output):
             "Qini across seeds",
             "Policy contrast vs email everyone (seed 42 bootstrap 95% CI)",
             "Mean ExtraTrees feature importance",
-            "Predicted uplift-score quantiles across seeds",
+            "Uplift-score distributions (seed 42 holdout)",
             "HT pseudo-outcome by predicted-uplift decile",
         ),
         vertical_spacing=0.08,
@@ -132,6 +132,11 @@ def _build_figure(results, seeds, summary, output):
         fig.add_trace(go.Box(name=name, y=vals, boxpoints="all", jitter=0.25), row=1, col=1)
 
     grid = np.linspace(0, 1, 101)
+    random_curves = []
+    for run in results:
+        baseline_curve = run["binary_uplift_benchmark"]["Random (seeded)"]["cumulative_curve"]
+        random_curves.append(np.interp(grid, baseline_curve["fraction"], baseline_curve["gain"]))
+    random_mean = np.asarray(random_curves).mean(axis=0)
     for name in names:
         curves = []
         for run in results:
@@ -148,8 +153,9 @@ def _build_figure(results, seeds, summary, output):
                                  showlegend=False, hoverinfo="skip"), row=1, col=2)
         fig.add_trace(go.Scatter(x=grid, y=mean, mode="lines", name=name,
                                  legendgroup=name), row=1, col=2)
-    fig.add_trace(go.Scatter(x=grid, y=np.zeros_like(grid), mode="lines",
-                             name="Zero gain", line={"dash": "dash"}), row=1, col=2)
+    fig.add_trace(go.Scatter(x=grid, y=random_mean, mode="lines",
+                             name="Random-ranking reference", line={"dash": "dash"}),
+                  row=1, col=2)
 
     for name in names:
         vals = [r["binary_uplift_benchmark"][name]["auuc_ht"] for r in results]
@@ -179,13 +185,11 @@ def _build_figure(results, seeds, summary, output):
         ), row=3, col=1)
 
     for learner in learners:
-        q = summary["uplift_score_quantile_stability"][learner]
-        x = ["p10", "p25", "p50", "p75", "p90"]
-        means = [q[k]["mean"] for k in x]
-        errors = [q[k]["standard_deviation"] for k in x]
-        fig.add_trace(go.Scatter(
-            x=x, y=means, mode="lines+markers", name=learner,
-            error_y={"type": "data", "array": errors},
+        hist = results[seed_index]["uplift_score_diagnostics"][learner]["histogram"]
+        edges = hist["bin_edges"]
+        centers = (np.asarray(edges[:-1]) + np.asarray(edges[1:])) / 2
+        fig.add_trace(go.Bar(
+            x=centers, y=hist["counts"], name=learner, opacity=0.55,
         ), row=3, col=2)
 
     for learner in learners:
@@ -206,8 +210,8 @@ def _build_figure(results, seeds, summary, output):
     fig.update_yaxes(title_text="AUUC", row=2, col=1)
     fig.update_yaxes(title_text="Qini", row=2, col=2)
     fig.update_xaxes(title_text="Mean impurity importance", row=3, col=1)
-    fig.update_xaxes(title_text="Predicted uplift quantile", row=3, col=2)
-    fig.update_yaxes(title_text="Expected-spend uplift score", row=3, col=2)
+    fig.update_xaxes(title_text="Predicted expected-spend uplift score (seed 42)", row=3, col=2)
+    fig.update_yaxes(title_text="Holdout customer count", row=3, col=2)
     fig.update_xaxes(title_text="Predicted-uplift decile (low to high)", row=4, col=1)
     fig.update_yaxes(title_text="Mean HT pseudo-outcome", row=4, col=1)
     fig.update_yaxes(title_text="Targeted minus email-everyone value", row=4, col=2)
