@@ -63,13 +63,24 @@ jobs:
             --output reports/repeated_seed_benchmark.json \
             --chart reports/repeated_seed_diagnostics.html
 
-      - name: Upload benchmark and diagnostics
+      - name: Run independent spend prediction and conformal evaluation
+        run: |
+          python scripts/run_spend_prediction.py --seed 42 --alpha 0.10
+
+      - name: Build compact dashboard research summary
+        run: |
+          python scripts/build_research_summary.py
+
+      - name: Upload benchmark, forecasting and diagnostics
         uses: actions/upload-artifact@v4
         with:
-          name: hillstrom-uplift-research-release
+          name: hillstrom-research-analytics-release
           path: |
             reports/uplift_benchmark.json
             reports/repeated_seed_benchmark.json
             reports/repeated_seed_diagnostics.html
+            reports/spend_prediction.json
+            reports/research_summary.json
+            artifacts/spend_forecaster.joblib
           if-no-files-found: error
           retention-days: 30
