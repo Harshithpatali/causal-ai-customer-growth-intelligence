@@ -75,6 +75,17 @@ def test_every_main_dashboard_page_renders_without_streamlit_exceptions():
 
 
 def test_research_analytics_page_renders_from_published_reports():
-    app = AppTest.from_file(REPO_ROOT / "app.py", default_timeout=30).run()
-    app.switch_page("pages/2_Research_Analytics.py").run()
-    assert not app.exception
+    frame = _sample_data()
+    scored = frame.assign(
+        predicted_spend_control=0.8,
+        predicted_spend_treatment=1.0,
+        estimated_incremental_spend=0.2,
+    )
+    with (
+        patch("causal_ai.data.load_data", return_value=frame),
+        patch("causal_ai.modeling.load_models", return_value=object()),
+        patch("causal_ai.modeling.score_customers", return_value=scored),
+    ):
+        app = AppTest.from_file(REPO_ROOT / "app.py", default_timeout=30).run()
+        app.switch_page("pages/2_Research_Analytics.py").run()
+        assert not app.exception
