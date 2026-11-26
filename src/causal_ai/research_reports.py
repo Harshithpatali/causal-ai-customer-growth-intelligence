@@ -37,6 +37,10 @@ def validate_research_summary(summary: dict) -> list[str]:
     )
     issues.extend(f"missing top-level section: {key}" for key in required if key not in summary)
 
+    dataset = summary.get("dataset")
+    if not isinstance(dataset, dict) or not isinstance(dataset.get("n_total"), (int, float)):
+        issues.append("dataset.n_total must be numeric")
+
     repeated = summary.get("repeated_seed_summary")
     if not isinstance(repeated, dict) or not repeated:
         issues.append("repeated_seed_summary must be a non-empty object")
@@ -99,6 +103,15 @@ def validate_spend_report(report: dict) -> list[str]:
             key in interval for key in ("nominal_coverage", "empirical_coverage", "mean_width")
         ):
             issues.append("model_metrics.conformal_interval is incomplete")
+    split = report.get("split")
+    if not isinstance(split, dict) or not all(
+        isinstance(split.get(key), (int, float)) for key in ("train", "calibration", "test")
+    ):
+        issues.append("split must contain numeric train, calibration and test counts")
+    if not isinstance(report.get("feature_permutation_importance"), list):
+        issues.append("feature_permutation_importance must be a list")
+    if not isinstance(report.get("by_randomized_arm"), dict):
+        issues.append("by_randomized_arm must be an object")
     return issues
 
 
@@ -110,4 +123,19 @@ def validate_advanced_statistics(report: dict) -> list[str]:
         values = report.get(section)
         if not isinstance(values, dict) or not all(key in values for key in ("ate", "ci_lower", "ci_upper")):
             issues.append(f"{section} is incomplete")
+    power = report.get("conversion_power_plan")
+    if not isinstance(power, dict) or not all(
+        key in power for key in ("absolute_effect", "control_rate", "n_control", "n_treatment")
+    ):
+        issues.append("conversion_power_plan is incomplete")
+    balance = report.get("randomization_balance")
+    if not isinstance(balance, dict) or "max_abs_smd" not in balance:
+        issues.append("randomization_balance is incomplete")
+    for outcome in ("visit", "conversion"):
+        values = report.get(outcome)
+        if not isinstance(values, dict) or "p_value" not in values:
+            issues.append(f"{outcome} statistics are incomplete")
+    spend = report.get("spend")
+    if isinstance(spend, dict) and "p_value" not in spend:
+        issues.append("spend p-value is missing")
     return issues
