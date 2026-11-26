@@ -1,5 +1,6 @@
 """Defensive readers and lightweight schema checks for generated research reports."""
 import json
+import math
 from pathlib import Path
 from typing import Any
 
@@ -27,6 +28,10 @@ def load_json_report(path: str | Path, required_keys: tuple[str, ...] = ()) -> t
     return payload, None
 
 
+def _is_number(value: Any) -> bool:
+    return isinstance(value, (int, float)) and math.isfinite(value)
+
+
 def validate_research_summary(summary: dict) -> list[str]:
     """Return schema problems for the sections consumed by the research dashboard."""
     issues: list[str] = []
@@ -38,8 +43,13 @@ def validate_research_summary(summary: dict) -> list[str]:
     issues.extend(f"missing top-level section: {key}" for key in required if key not in summary)
 
     dataset = summary.get("dataset")
-    if not isinstance(dataset, dict) or not isinstance(dataset.get("n_total"), (int, float)):
+    if not isinstance(dataset, dict) or not _is_number(dataset.get("n_total")):
         issues.append("dataset.n_total must be numeric")
+
+    if not isinstance(summary.get("winner_counts"), dict):
+        issues.append("winner_counts must be an object")
+    if not isinstance(summary.get("methodology"), dict):
+        issues.append("methodology must be an object")
 
     repeated = summary.get("repeated_seed_summary")
     if not isinstance(repeated, dict) or not repeated:
@@ -52,9 +62,9 @@ def validate_research_summary(summary: dict) -> list[str]:
             for metric in ("policy_value_ipw", "auuc_ht", "qini_ht"):
                 values = metrics.get(metric)
                 if not isinstance(values, dict) or not all(
-                    key in values for key in ("mean", "standard_deviation", "minimum", "maximum")
+                    _is_number(values.get(key)) for key in ("mean", "standard_deviation", "minimum", "maximum")
                 ):
-                    issues.append(f"repeated_seed_summary.{strategy}.{metric} is incomplete")
+                    issues.append(f"repeated_seed_summary.{strategy}.{metric} is incomplete or non-numeric")
 
     primary = summary.get("primary_seed_policy_values")
     if not isinstance(primary, dict) or not primary:
@@ -62,9 +72,9 @@ def validate_research_summary(summary: dict) -> list[str]:
     else:
         for strategy, values in primary.items():
             if not isinstance(values, dict) or not all(
-                key in values for key in ("value", "ci_lower", "ci_upper", "auuc", "qini")
+                _is_number(values.get(key)) for key in ("value", "ci_lower", "ci_upper", "auuc", "qini")
             ):
-                issues.append(f"primary_seed_policy_values.{strategy} is incomplete")
+                issues.append(f"primary_seed_policy_values.{strategy} is incomplete or non-numeric")
 
     contrasts = summary.get("bootstrap_vs_email_everyone")
     if not isinstance(contrasts, dict) or not contrasts:
@@ -72,9 +82,9 @@ def validate_research_summary(summary: dict) -> list[str]:
     else:
         for strategy, values in contrasts.items():
             if not isinstance(values, dict) or not all(
-                key in values for key in ("estimate", "bootstrap_ci_lower", "bootstrap_ci_upper")
+                _is_number(values.get(key)) for key in ("estimate", "bootstrap_ci_lower", "bootstrap_ci_upper")
             ):
-                issues.append(f"bootstrap_vs_email_everyone.{strategy} is incomplete")
+                issues.append(f"bootstrap_vs_email_everyone.{strategy} is incomplete or non-numeric")
 
     creative = summary.get("creative_average_effects")
     if not isinstance(creative, dict):
@@ -83,9 +93,9 @@ def validate_research_summary(summary: dict) -> list[str]:
         for comparison, values in creative.items():
             effect = values.get("randomized_arm_spend_effect") if isinstance(values, dict) else None
             if not isinstance(effect, dict) or not all(
-                key in effect for key in ("difference", "ci_lower", "ci_upper")
+                _is_number(effect.get(key)) for key in ("difference", "ci_lower", "ci_upper")
             ):
-                issues.append(f"creative_average_effects.{comparison} is incomplete")
+                issues.append(f"creative_average_effects.{comparison} is incomplete or non-numeric")
     return issues
 
 
@@ -94,24 +104,29 @@ def validate_spend_report(report: dict) -> list[str]:
     issues = [f"missing section: {key}" for key in required if key not in report]
     for section in ("baseline", "model_metrics"):
         values = report.get(section)
-        if not isinstance(values, dict) or not all(key in values for key in ("mae", "rmse", "r2")):
-            issues.append(f"{section} must contain mae, rmse and r2")
+        if not isinstance(values, dict) or not all(_is_number(values.get(key)) for key in ("mae", "rmse", "r2")):
+            issues.append(f"{section} must contain numeric mae, rmse and r2")
     model = report.get("model_metrics")
     if isinstance(model, dict):
         interval = model.get("conformal_interval")
         if not isinstance(interval, dict) or not all(
-            key in interval for key in ("nominal_coverage", "empirical_coverage", "mean_width")
+            _is_number(interval.get(key)) for key in ("nominal_coverage", "empirical_coverage", "mean_width")
         ):
-            issues.append("model_metrics.conformal_interval is incomplete")
+            issues.append("model_metrics.conformal_interval is incomplete or non-numeric")
     split = report.get("split")
     if not isinstance(split, dict) or not all(
-        isinstance(split.get(key), (int, float)) for key in ("train", "calibration", "test")
+        _is_number(split.get(key)) for key in ("train", "calibration", "test")
     ):
         issues.append("split must contain numeric train, calibration and test counts")
-    if not isinstance(report.get("feature_permutation_importance"), list):
-        issues.append("feature_permutation_importance must be a list")
-    if not isinstance(report.get("by_randomized_arm"), dict):
-        issues.append("by_randomized_arm must be an object")
+    importance = report.get("feature_permutation_importance")
+    if not isinstance(importance, list) or any(
+        not isinstance(row, dict) or not isinstance(row.get("feature"), str)
+        or not _is_number(row.get("mae_increase")) for row in importance
+    ):
+        issues.append("feature_permutation_importance must contain feature names and numeric mae_increase values")
+    arms = report.get("by_randomized_arm")
+    if not isinstance(arms, dict) or any(not isinstance(row, dict) for row in arms.values()):
+        issues.append("by_randomized_arm must be an object of arm-level metric objects")
     return issues
 
 
@@ -121,21 +136,21 @@ def validate_advanced_statistics(report: dict) -> list[str]:
     issues = [f"missing section: {key}" for key in required if key not in report]
     for section in ("spend", "spend_cuped", "spend_aipw"):
         values = report.get(section)
-        if not isinstance(values, dict) or not all(key in values for key in ("ate", "ci_lower", "ci_upper")):
-            issues.append(f"{section} is incomplete")
+        if not isinstance(values, dict) or not all(_is_number(values.get(key)) for key in ("ate", "ci_lower", "ci_upper")):
+            issues.append(f"{section} is incomplete or non-numeric")
     power = report.get("conversion_power_plan")
     if not isinstance(power, dict) or not all(
-        key in power for key in ("absolute_effect", "control_rate", "n_control", "n_treatment")
+        _is_number(power.get(key)) for key in ("absolute_effect", "control_rate", "n_control", "n_treatment")
     ):
-        issues.append("conversion_power_plan is incomplete")
+        issues.append("conversion_power_plan is incomplete or non-numeric")
     balance = report.get("randomization_balance")
-    if not isinstance(balance, dict) or "max_abs_smd" not in balance:
-        issues.append("randomization_balance is incomplete")
+    if not isinstance(balance, dict) or not _is_number(balance.get("max_abs_smd")):
+        issues.append("randomization_balance is incomplete or non-numeric")
     for outcome in ("visit", "conversion"):
         values = report.get(outcome)
-        if not isinstance(values, dict) or "p_value" not in values:
-            issues.append(f"{outcome} statistics are incomplete")
+        if not isinstance(values, dict) or not _is_number(values.get("p_value")):
+            issues.append(f"{outcome} statistics are incomplete or non-numeric")
     spend = report.get("spend")
-    if isinstance(spend, dict) and "p_value" not in spend:
-        issues.append("spend p-value is missing")
+    if isinstance(spend, dict) and not _is_number(spend.get("p_value")):
+        issues.append("spend p-value is missing or non-numeric")
     return issues
