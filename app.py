@@ -166,9 +166,8 @@ if mode == "Executive view":
 
         st.markdown("### The business takeaway")
         st.markdown(
-            '<div class="business-callout"><h3>Emails increased average customer response and spend.</h3>'
-            '<p class="muted">The experiment randomly assigned customers to email or no-email groups. '
-            'That makes the overall campaign comparison stronger evidence than a simple before-and-after comparison.</p></div>',
+            '<div class="business-callout"><h3>Email increased average spend. The targeting model has not proved better than emailing everyone.</h3>'
+            '<p class="muted">The randomized experiment supports a positive average email effect. A separate randomized-holdout policy comparison is required to show that customer-level targeting adds value; the current model has not established that.</p></div>',
             unsafe_allow_html=True,
         )
         if significant:
