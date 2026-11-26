@@ -1,0 +1,251 @@
+{
+  "visit": {
+    "treated_rate": 0.16704923408441466,
+    "control_rate": 0.10616727682343002,
+    "ate": 0.06088195726098464,
+    "standard_error": 0.0027772362622871093,
+    "test_standard_error": 0.0029683908833079984,
+    "z_statistic": 20.51008767185584,
+    "p_value": 1.7497869967580046e-93,
+    "ci_lower": 0.055438674210343264,
+    "ci_upper": 0.06632524031162601,
+    "n_treated": 42694,
+    "n_control": 21306,
+    "holm_adjusted_p_value": 5.249360990274014e-93
+  },
+  "conversion": {
+    "treated_rate": 0.010680657703658593,
+    "control_rate": 0.005726086548390125,
+    "ate": 0.004954571155268468,
+    "standard_error": 0.0007174339221810615,
+    "test_standard_error": 0.000793522991766355,
+    "z_statistic": 6.2437650914685685,
+    "p_value": 4.271613795144971e-10,
+    "ci_lower": 0.0035484265065062756,
+    "ci_upper": 0.00636071580403066,
+    "n_treated": 42694,
+    "n_control": 21306,
+    "holm_adjusted_p_value": 8.543227590289942e-10
+  },
+  "spend": {
+    "treated_mean": 1.2495854218391345,
+    "control_mean": 0.6527893551112361,
+    "ate": 0.5967960667278983,
+    "standard_error": 0.11255620869106332,
+    "degrees_of_freedom": 57039.54369815328,
+    "p_value": 1.1483719230445045e-07,
+    "ci_lower": 0.3761852701533674,
+    "ci_upper": 0.8174068633024292,
+    "n_treated": 42694,
+    "n_control": 21306,
+    "holm_adjusted_p_value": 1.1483719230445045e-07
+  },
+  "spend_cuped": {
+    "treated_mean": 1.2488196883022429,
+    "control_mean": 0.6543237692492275,
+    "ate": 0.5944959190530154,
+    "standard_error": 0.11253871931153628,
+    "degrees_of_freedom": 57029.551477771325,
+    "p_value": 1.2783642965127779e-07,
+    "ci_lower": 0.37391940093975995,
+    "ci_upper": 0.8150724371662708,
+    "n_treated": 42694,
+    "n_control": 21306,
+    "theta": 0.0012754870330541736,
+    "raw_ate": 0.5967960667278983,
+    "raw_standard_error": 0.11255620869106332,
+    "variance_reduction_fraction": 0.0003107428892598074,
+    "covariate": "baseline_covariate",
+    "note": "Use only a pre-treatment covariate. CUPED improves precision; it does not repair a flawed assignment or measurement process."
+  },
+  "spend_aipw": {
+    "ate": 0.5943402085009385,
+    "standard_error": 0.11249056559240991,
+    "ci_lower": 0.3738627513392745,
+    "ci_upper": 0.8148176656626025,
+    "p_value": 1.267615995530598e-07,
+    "n": 64000,
+    "estimator": "augmented inverse-probability weighting",
+    "note": "Valid under consistency, positivity, and either correct propensity or both outcome regressions; nuisance predictions must be cross-fitted or external."
+  },
+  "randomization_balance": {
+    "n_treated": 42694,
+    "n_control": 21306,
+    "rows": [
+      {
+        "feature": "recency",
+        "level": null,
+        "smd": 0.006004340077750869,
+        "abs_smd": 0.006004340077750869,
+        "kind": "numeric"
+      },
+      {
+        "feature": "history_segment",
+        "level": "1) $0 - $100",
+        "smd": 0.005113845225621662,
+        "abs_smd": 0.005113845225621662,
+        "kind": "indicator"
+      },
+      {
+        "feature": "history_segment",
+        "level": "2) $100 - $200",
+        "smd": -0.01532062835726887,
+        "abs_smd": 0.01532062835726887,
+        "kind": "indicator"
+      },
+      {
+        "feature": "history_segment",
+        "level": "3) $200 - $350",
+        "smd": 0.008419718257787302,
+        "abs_smd": 0.008419718257787302,
+        "kind": "indicator"
+      },
+      {
+        "feature": "history_segment",
+        "level": "4) $350 - $500",
+        "smd": 0.0022502265039492475,
+        "abs_smd": 0.0022502265039492475,
+        "kind": "indicator"
+      },
+      {
+        "feature": "history_segment",
+        "level": "5) $500 - $750",
+        "smd": -0.004513940054671172,
+        "abs_smd": 0.004513940054671172,
+        "kind": "indicator"
+      },
+      {
+        "feature": "history_segment",
+        "level": "6) $750 - $1,000",
+        "smd": -0.0013093486329745518,
+        "abs_smd": 0.0013093486329745518,
+        "kind": "indicator"
+      },
+      {
+        "feature": "history_segment",
+        "level": "7) $1,000 +",
+        "smd": 0.009720693382307985,
+        "abs_smd": 0.009720693382307985,
+        "kind": "indicator"
+      },
+      {
+        "feature": "history",
+        "level": null,
+        "smd": 0.0070634545705258595,
+        "abs_smd": 0.0070634545705258595,
+        "kind": "numeric"
+      },
+      {
+        "feature": "mens",
+        "level": "0",
+        "smd": 0.006610559041797781,
+        "abs_smd": 0.006610559041797781,
+        "kind": "indicator"
+      },
+      {
+        "feature": "mens",
+        "level": "1",
+        "smd": -0.006610559041797893,
+        "abs_smd": 0.006610559041797893,
+        "kind": "indicator"
+      },
+      {
+        "feature": "womens",
+        "level": "0",
+        "smd": -0.006265090900659669,
+        "abs_smd": 0.006265090900659669,
+        "kind": "indicator"
+      },
+      {
+        "feature": "womens",
+        "level": "1",
+        "smd": 0.00626509090065978,
+        "abs_smd": 0.00626509090065978,
+        "kind": "indicator"
+      },
+      {
+        "feature": "zip_code",
+        "level": "Rural",
+        "smd": 0.008811238997617949,
+        "abs_smd": 0.008811238997617949,
+        "kind": "indicator"
+      },
+      {
+        "feature": "zip_code",
+        "level": "Surburban",
+        "smd": -0.006404781560239178,
+        "abs_smd": 0.006404781560239178,
+        "kind": "indicator"
+      },
+      {
+        "feature": "zip_code",
+        "level": "Urban",
+        "smd": 0.0001015359873930745,
+        "abs_smd": 0.0001015359873930745,
+        "kind": "indicator"
+      },
+      {
+        "feature": "newbie",
+        "level": "0",
+        "smd": -0.0008356308969717878,
+        "abs_smd": 0.0008356308969717878,
+        "kind": "indicator"
+      },
+      {
+        "feature": "newbie",
+        "level": "1",
+        "smd": 0.0008356308969718988,
+        "abs_smd": 0.0008356308969718988,
+        "kind": "indicator"
+      },
+      {
+        "feature": "channel",
+        "level": "Multichannel",
+        "smd": -0.004733100092978112,
+        "abs_smd": 0.004733100092978112,
+        "kind": "indicator"
+      },
+      {
+        "feature": "channel",
+        "level": "Phone",
+        "smd": 0.00019372228355604056,
+        "abs_smd": 0.00019372228355604056,
+        "kind": "indicator"
+      },
+      {
+        "feature": "channel",
+        "level": "Web",
+        "smd": 0.0029215455929629186,
+        "abs_smd": 0.0029215455929629186,
+        "kind": "indicator"
+      }
+    ],
+    "max_abs_smd": 0.01532062835726887,
+    "share_abs_smd_below_0_1": 1.0
+  },
+  "conversion_power_plan": {
+    "n_control": 5122,
+    "n_treatment": 5122,
+    "total_n": 10244,
+    "control_rate": 0.005726086548390125,
+    "treatment_rate": 0.010726086548390124,
+    "absolute_effect": 0.004999999999999999,
+    "alpha": 0.05,
+    "target_power": 0.8,
+    "treatment_to_control_ratio": 1.0,
+    "method": "two-sided normal approximation for independent proportions"
+  },
+  "design": {
+    "n": 64000,
+    "crossfit_folds": 5,
+    "seed": 42,
+    "pooled_email_propensity": 0.6666666666666666,
+    "holm_family": [
+      "visit",
+      "conversion",
+      "spend"
+    ],
+    "power_plan_mde": 0.005,
+    "interpretation": "AIPW nuisance predictions are cross-fitted; CUPED uses pre-treatment historical spend. Power calculation is a planning approximation."
+  }
+}

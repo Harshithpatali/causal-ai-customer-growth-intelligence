@@ -1,0 +1,116 @@
+{
+  "study": "Hillstrom cross-sectional spend prediction",
+  "task_type": "one-period outcome prediction; not time-series forecasting",
+  "dataset_rows": 64000,
+  "features": [
+    "recency",
+    "history_segment",
+    "history",
+    "mens",
+    "womens",
+    "zip_code",
+    "newbie",
+    "channel"
+  ],
+  "split": {
+    "train": 38400,
+    "calibration": 12800,
+    "test": 12800,
+    "seed": 42
+  },
+  "model": "HistGradientBoostingRegressor with imputation and one-hot encoding",
+  "baseline": {
+    "model": "training-mean DummyRegressor",
+    "n": 12800,
+    "mae": 2.122388009033203,
+    "rmse": 15.475919632784578,
+    "r2": -1.9995651590054564e-06,
+    "mean_actual": 1.059971875,
+    "mean_predicted": 1.0818557291666664
+  },
+  "model_metrics": {
+    "n": 12800,
+    "mae": 2.0806330583813915,
+    "rmse": 15.491970411732613,
+    "r2": -0.0020773701972292002,
+    "mean_actual": 1.059971875,
+    "mean_predicted": 1.0391396455684416,
+    "conformal_interval": {
+      "nominal_coverage": 0.9,
+      "empirical_coverage": 0.901015625,
+      "mean_width": 2.2847443549616524,
+      "calibration_radius": 1.3224119336909215,
+      "calibration_n": 12800,
+      "test_n": 12800,
+      "method": "split conformal with absolute residuals and finite-sample higher quantile"
+    }
+  },
+  "by_randomized_arm": {
+    "control": {
+      "n": 4261,
+      "mae": 1.7461739561197378,
+      "rmse": 12.54235406659789,
+      "r2": -0.0028249219860532193,
+      "mean_actual": 0.7118704529453181,
+      "mean_predicted": 1.046710019050148,
+      "conformal_coverage": 0.901196902135649
+    },
+    "email": {
+      "n": 8539,
+      "mae": 2.247529677978172,
+      "rmse": 16.770929767307965,
+      "r2": -0.0021925018593929035,
+      "mean_actual": 1.2336760744817894,
+      "mean_predicted": 1.0353619946250585,
+      "conformal_coverage": 0.9009251668813678
+    }
+  },
+  "feature_permutation_importance": [
+    {
+      "feature": "history",
+      "mae_increase": 0.08583969976405834,
+      "standard_deviation": 0.003698748107660041
+    },
+    {
+      "feature": "history_segment",
+      "mae_increase": 0.07589263163221469,
+      "standard_deviation": 0.0025426276292362638
+    },
+    {
+      "feature": "recency",
+      "mae_increase": 0.013912850646458086,
+      "standard_deviation": 0.0029993783703966396
+    },
+    {
+      "feature": "newbie",
+      "mae_increase": 0.011700495005853462,
+      "standard_deviation": 0.000640272075786964
+    },
+    {
+      "feature": "zip_code",
+      "mae_increase": 0.006147574254537514,
+      "standard_deviation": 0.002562883076905219
+    },
+    {
+      "feature": "mens",
+      "mae_increase": 0.0018550595338213682,
+      "standard_deviation": 0.0007076042103039033
+    },
+    {
+      "feature": "channel",
+      "mae_increase": 0.0017963406436443563,
+      "standard_deviation": 0.0015627927644845995
+    },
+    {
+      "feature": "womens",
+      "mae_increase": 0.0006197483571228624,
+      "standard_deviation": 0.0010781764555957897
+    }
+  ],
+  "interpretation": [
+    "This is a cross-sectional prediction task because the source has no repeated time index.",
+    "Conformal coverage is marginal under exchangeability; it is not a conditional guarantee for every customer segment.",
+    "A good spend predictor does not establish heterogeneous treatment-effect or targeting accuracy.",
+    "The randomized holdout uplift benchmark remains the source for policy evaluation."
+  ]
+}

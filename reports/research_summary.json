@@ -1,0 +1,434 @@
+{
+  "dataset": {
+    "dataset": "Hillstrom / MineThatData Email Analytics Challenge",
+    "n_total": 64000,
+    "n_train": 48000,
+    "n_holdout": 16000,
+    "seed": 42,
+    "test_size": 0.25,
+    "randomized_arms": [
+      "No E-Mail",
+      "Mens E-Mail",
+      "Womens E-Mail"
+    ],
+    "pooled_email_propensity": 0.6666666666666666,
+    "within_creative_pair_propensity": 0.5,
+    "policy_budget_fraction": 0.6666666666666666
+  },
+  "repeated_seed_summary": {
+    "T-learner": {
+      "policy_value_ipw": {
+        "mean": 1.136230125,
+        "standard_deviation": 0.18079604948208922,
+        "minimum": 0.9418087500000001,
+        "maximum": 1.333955625,
+        "values_by_seed": [
+          1.0534040625,
+          0.9418087500000001,
+          1.32403125,
+          1.333955625,
+          1.0279509375000002
+        ]
+      },
+      "auuc_ht": {
+        "mean": 3999.737239125,
+        "standard_deviation": 1303.5284108819988,
+        "minimum": 2374.0512703125,
+        "maximum": 5605.394576718751,
+        "values_by_seed": [
+          4385.341918124999,
+          2374.0512703125,
+          4641.643408593749,
+          5605.394576718751,
+          2992.2550218750016
+        ]
+      },
+      "qini_ht": {
+        "mean": 506.0212391250013,
+        "standard_deviation": 939.2577879116154,
+        "minimum": -792.6587296874997,
+        "maximum": 1232.1070767187516,
+        "values_by_seed": [
+          1211.0869181250018,
+          -792.6587296874997,
+          1075.8509085937517,
+          1232.1070767187516,
+          -196.279978124999
+        ]
+      }
+    },
+    "S-learner": {
+      "policy_value_ipw": {
+        "mean": 1.249231875,
+        "standard_deviation": 0.14315812046451157,
+        "minimum": 1.110808125,
+        "maximum": 1.4404143749999998,
+        "values_by_seed": [
+          1.1711165625000002,
+          1.110808125,
+          1.3615134375,
+          1.4404143749999998,
+          1.1623068750000003
+        ]
+      },
+      "auuc_ht": {
+        "mean": 4527.935040937498,
+        "standard_deviation": 1147.920953680846,
+        "minimum": 3229.7688421875,
+        "maximum": 6255.815213906251,
+        "values_by_seed": [
+          4517.3544009374955,
+          3229.7688421875,
+          4824.400174218748,
+          6255.815213906251,
+          3812.336573437501
+        ]
+      },
+      "qini_ht": {
+        "mean": 1034.219040937501,
+        "standard_deviation": 703.0255275306166,
+        "minimum": 63.058842187501455,
+        "maximum": 1882.527713906249,
+        "values_by_seed": [
+          1343.0994009375013,
+          63.058842187501455,
+          1258.607674218752,
+          1882.527713906249,
+          623.8015734375017
+        ]
+      }
+    },
+    "X-learner": {
+      "policy_value_ipw": {
+        "mean": 1.17589875,
+        "standard_deviation": 0.24884573160119264,
+        "minimum": 0.9718359375,
+        "maximum": 1.4560678125,
+        "values_by_seed": [
+          0.9718359375,
+          1.0272496875,
+          1.4560678125,
+          1.438921875,
+          0.9854184375
+        ]
+      },
+      "auuc_ht": {
+        "mean": 3979.748335125,
+        "standard_deviation": 1507.4820985059011,
+        "minimum": 2373.5143200000007,
+        "maximum": 5716.60550390625,
+        "values_by_seed": [
+          3805.1475440624995,
+          2373.5143200000007,
+          5317.392146718749,
+          5716.60550390625,
+          2686.082160937501
+        ]
+      },
+      "qini_ht": {
+        "mean": 486.0323351250008,
+        "standard_deviation": 1114.7994295471835,
+        "minimum": -793.1956799999996,
+        "maximum": 1751.5996467187524,
+        "values_by_seed": [
+          630.8925440625019,
+          -793.1956799999996,
+          1751.5996467187524,
+          1343.3180039062488,
+          -502.452839062499
+        ]
+      }
+    },
+    "Random (seeded)": {
+      "policy_value_ipw": {
+        "mean": 1.1699546250000001,
+        "standard_deviation": 0.09821167597601417,
+        "minimum": 1.0487503124999997,
+        "maximum": 1.2830475000000001,
+        "values_by_seed": [
+          1.0929225,
+          1.0487503124999997,
+          1.2830475000000001,
+          1.2403021875,
+          1.1847506250000002
+        ]
+      },
+      "auuc_ht": {
+        "mean": 3964.244537062499,
+        "standard_deviation": 713.0937462196513,
+        "minimum": 2862.602248125,
+        "maximum": 4640.364980624996,
+        "values_by_seed": [
+          4640.364980624996,
+          2862.602248125,
+          4477.224597656248,
+          4139.92733015625,
+          3701.10352875
+        ]
+      },
+      "qini_ht": {
+        "mean": 470.52853706250096,
+        "standard_deviation": 755.457876598745,
+        "minimum": -304.1077518749994,
+        "maximum": 1466.1099806250004,
+        "values_by_seed": [
+          1466.1099806250004,
+          -304.1077518749994,
+          911.4320976562517,
+          -233.3601698437493,
+          512.5685287500014
+        ]
+      }
+    },
+    "Recency (more recent first)": {
+      "policy_value_ipw": {
+        "mean": 1.031643,
+        "standard_deviation": 0.10446950176442045,
+        "minimum": 0.9238171875000001,
+        "maximum": 1.1713171875000001,
+        "values_by_seed": [
+          0.9396684375000001,
+          0.9238171875000001,
+          1.0281403125,
+          1.1713171875000001,
+          1.095271875
+        ]
+      },
+      "auuc_ht": {
+        "mean": 3370.0765447500007,
+        "standard_deviation": 721.7992141370212,
+        "minimum": 2575.0114504687513,
+        "maximum": 4522.1985998437485,
+        "values_by_seed": [
+          3302.9545912500025,
+          3027.718340625002,
+          2575.0114504687513,
+          4522.1985998437485,
+          3422.4997415625003
+        ]
+      },
+      "qini_ht": {
+        "mean": -123.63945524999906,
+        "standard_deviation": 504.4823574101671,
+        "minimum": -990.7810495312496,
+        "maximum": 233.96474156250056,
+        "values_by_seed": [
+          128.69959125000074,
+          -138.99165937499853,
+          -990.7810495312496,
+          148.91109984375163,
+          233.96474156250056
+        ]
+      }
+    },
+    "Historical spend (highest first)": {
+      "policy_value_ipw": {
+        "mean": 1.1170359375,
+        "standard_deviation": 0.10834072285574924,
+        "minimum": 1.0020515625,
+        "maximum": 1.2540328125,
+        "values_by_seed": [
+          1.0020515625,
+          1.0231903125,
+          1.2540328125,
+          1.1952271875000002,
+          1.1106778125
+        ]
+      },
+      "auuc_ht": {
+        "mean": 4101.982510875,
+        "standard_deviation": 695.8503016527436,
+        "minimum": 3258.7971356250005,
+        "maximum": 5100.590070468748,
+        "values_by_seed": [
+          4032.440715937499,
+          3727.2832528125014,
+          4390.801379531251,
+          5100.590070468748,
+          3258.7971356250005
+        ]
+      },
+      "qini_ht": {
+        "mean": 608.2665108750008,
+        "standard_deviation": 322.23043057963946,
+        "minimum": 70.26213562500078,
+        "maximum": 858.1857159374999,
+        "values_by_seed": [
+          858.1857159374999,
+          560.5732528125019,
+          825.0088795312518,
+          727.30257046875,
+          70.26213562500078
+        ]
+      }
+    }
+  },
+  "winner_counts": {
+    "policy_value": {
+      "T-learner": 0,
+      "S-learner": 3,
+      "X-learner": 1,
+      "Random (seeded)": 1,
+      "Recency (more recent first)": 0,
+      "Historical spend (highest first)": 0
+    },
+    "auuc": {
+      "T-learner": 0,
+      "S-learner": 2,
+      "X-learner": 1,
+      "Random (seeded)": 1,
+      "Recency (more recent first)": 0,
+      "Historical spend (highest first)": 1
+    },
+    "qini": {
+      "T-learner": 0,
+      "S-learner": 2,
+      "X-learner": 1,
+      "Random (seeded)": 1,
+      "Recency (more recent first)": 0,
+      "Historical spend (highest first)": 1
+    }
+  },
+  "primary_seed_policy_values": {
+    "T-learner": {
+      "value": 0.9418087500000001,
+      "ci_lower": 0.6744333753795624,
+      "ci_upper": 1.2091841246204378,
+      "auuc": 2374.0512703125,
+      "qini": -792.6587296874997
+    },
+    "S-learner": {
+      "value": 1.110808125,
+      "ci_lower": 0.7830400174486842,
+      "ci_upper": 1.4385762325513156,
+      "auuc": 3229.7688421875,
+      "qini": 63.058842187501455
+    },
+    "X-learner": {
+      "value": 1.0319175,
+      "ci_lower": 0.7491774862692748,
+      "ci_upper": 1.3146575137307253,
+      "auuc": 2402.7134765625015,
+      "qini": -763.9965234374993
+    },
+    "Random (seeded)": {
+      "value": 1.0487503124999997,
+      "ci_lower": 0.7333564709570676,
+      "ci_upper": 1.3641441540429318,
+      "auuc": 2862.602248125,
+      "qini": -304.1077518749994
+    },
+    "Recency (more recent first)": {
+      "value": 0.9238171875000001,
+      "ci_lower": 0.6603508016613542,
+      "ci_upper": 1.187283573338646,
+      "auuc": 3027.718340625002,
+      "qini": -138.99165937499853
+    },
+    "Historical spend (highest first)": {
+      "value": 1.0231903125,
+      "ci_lower": 0.7508626916974006,
+      "ci_upper": 1.2955179333025992,
+      "auuc": 3727.2832528125014,
+      "qini": 560.5732528125019
+    }
+  },
+  "bootstrap_vs_email_everyone": {
+    "T-learner vs Email everyone": {
+      "estimate": -0.246478125,
+      "bootstrap_ci_lower": -0.49893639843750004,
+      "bootstrap_ci_upper": -0.019332796875000047,
+      "bootstrap_replicates": 1000,
+      "bootstrap_standard_error": 0.12369534975479043,
+      "method": "paired nonparametric bootstrap of holdout rows; percentile 95% interval"
+    },
+    "S-learner vs Email everyone": {
+      "estimate": -0.07747875000000005,
+      "bootstrap_ci_lower": -0.4115262421875,
+      "bootstrap_ci_upper": 0.2530796484374998,
+      "bootstrap_replicates": 1000,
+      "bootstrap_standard_error": 0.163277316839461,
+      "method": "paired nonparametric bootstrap of holdout rows; percentile 95% interval"
+    },
+    "X-learner vs Email everyone": {
+      "estimate": -0.15636937500000003,
+      "bootstrap_ci_lower": -0.41547077343750005,
+      "bootstrap_ci_upper": 0.06850307812499976,
+      "bootstrap_replicates": 1000,
+      "bootstrap_standard_error": 0.12584039586197837,
+      "method": "paired nonparametric bootstrap of holdout rows; percentile 95% interval"
+    },
+    "Random (seeded) vs Email everyone": {
+      "estimate": -0.1395365625000001,
+      "bootstrap_ci_lower": -0.43672809375000005,
+      "bootstrap_ci_upper": 0.17562897656249987,
+      "bootstrap_replicates": 1000,
+      "bootstrap_standard_error": 0.15558376924960718,
+      "method": "paired nonparametric bootstrap of holdout rows; percentile 95% interval"
+    },
+    "Recency (more recent first) vs Email everyone": {
+      "estimate": -0.2644696875,
+      "bootstrap_ci_lower": -0.43376643749999994,
+      "bootstrap_ci_upper": -0.10956114843750003,
+      "bootstrap_replicates": 1000,
+      "bootstrap_standard_error": 0.08198914601083868,
+      "method": "paired nonparametric bootstrap of holdout rows; percentile 95% interval"
+    },
+    "Historical spend (highest first) vs Email everyone": {
+      "estimate": -0.16509656250000007,
+      "bootstrap_ci_lower": -0.36002777343750003,
+      "bootstrap_ci_upper": 0.0315261093749999,
+      "bootstrap_replicates": 1000,
+      "bootstrap_standard_error": 0.09810380707429502,
+      "method": "paired nonparametric bootstrap of holdout rows; percentile 95% interval"
+    }
+  },
+  "creative_average_effects": {
+    "Mens E-Mail vs No E-Mail": {
+      "randomized_arm_spend_effect": {
+        "difference": 0.37433385784842177,
+        "standard_error": 0.2623413364215352,
+        "ci_lower": -0.13990976589709236,
+        "ci_upper": 0.8885774815939359,
+        "n_a": 5327,
+        "n_b": 5326,
+        "estimator": "unadjusted randomized-arm difference in means; Welch 95% CI"
+      },
+      "mean_model_implied_spend_effect": 0.991424716666331,
+      "model_implied_positive_effect_share": 0.696875,
+      "interpretation": "Observed contrast is a randomized-arm average effect; model-implied customer-level effects are exploratory and are not individually observed."
+    },
+    "Womens E-Mail vs No E-Mail": {
+      "randomized_arm_spend_effect": {
+        "difference": 0.41345533494097675,
+        "standard_error": 0.2693854311232942,
+        "ci_lower": -0.11459737832670502,
+        "ci_upper": 0.9415080482086585,
+        "n_a": 5347,
+        "n_b": 5326,
+        "estimator": "unadjusted randomized-arm difference in means; Welch 95% CI"
+      },
+      "mean_model_implied_spend_effect": 0.48764155024007605,
+      "model_implied_positive_effect_share": 0.55525,
+      "interpretation": "Observed contrast is a randomized-arm average effect; model-implied customer-level effects are exploratory and are not individually observed."
+    },
+    "Mens E-Mail vs Womens E-Mail": {
+      "randomized_arm_spend_effect": {
+        "difference": -0.03912147709255498,
+        "standard_error": 0.3064445343368509,
+        "ci_lower": -0.6398099530262907,
+        "ci_upper": 0.5615669988411808,
+        "n_a": 5327,
+        "n_b": 5347,
+        "estimator": "unadjusted randomized-arm difference in means; Welch 95% CI"
+      },
+      "mean_model_implied_spend_effect": 0.5037831664262549,
+      "model_implied_positive_effect_share": 0.5929375,
+      "interpretation": "Observed contrast is a randomized-arm average effect; model-implied customer-level effects are exploratory and are not individually observed."
+    }
+  },
+  "methodology": {
+    "repeated_splits": "Repeated stratified partitions of the same 64,000-row experiment. Cross-seed standard deviations describe split sensitivity, not independent experimental replication or external validation.",
+    "bootstrap": "Paired nonparametric bootstrap resampling holdout rows; percentile 95% interval. This quantifies holdout sampling uncertainty conditional on the fitted policies, not model-training uncertainty."
+  }
+}
