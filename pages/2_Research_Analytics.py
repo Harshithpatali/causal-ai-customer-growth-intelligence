@@ -245,17 +245,11 @@ else:
 
 with st.expander("Research interpretation and limitations"):
     st.markdown(
-        "- The S-learner leads mean policy value across the five supplied splits, but no learned strategy has demonstrated a statistically significant advantage over emailing everyone.
-"
-        "- Repeated seeds are partitions of the same experiment, not independent replications.
-"
-        "- Paired bootstrap intervals are conditional on fitted policies and do not include model-training or model-selection uncertainty.
-"
-        "- Feature importance is predictive, not causal.
-"
-        "- Hillstrom has no time index, campaign calendar or repeated customer observations. The spend task is cross-sectional, not temporal forecasting.
-"
-        "- Contact cost and contribution margin are not observed; scenario outputs are not realized profit.
-"
+        "- The S-learner leads mean policy value across the five supplied splits, but no learned strategy has demonstrated a statistically significant advantage over emailing everyone.\\n"
+        "- Repeated seeds are partitions of the same experiment, not independent replications.\\n"
+        "- Paired bootstrap intervals are conditional on fitted policies and do not include model-training or model-selection uncertainty.\\n"
+        "- Feature importance is predictive, not causal.\\n"
+        "- Hillstrom has no time index, campaign calendar or repeated customer observations. The spend task is cross-sectional, not temporal forecasting.\\n"
+        "- Contact cost and contribution margin are not observed; scenario outputs are not realized profit.\\n"
         "- Marginal conformal coverage does not guarantee coverage within every subgroup."
     )
