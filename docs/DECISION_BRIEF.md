@@ -2,50 +2,64 @@
 
 ## Executive decision
 
-**Decision owner:** CRM / lifecycle marketing lead  
-**Decision:** Treat the randomized email experiment as evidence that the tested email treatment mixture increased average customer response and spend in this historical sample. Do not deploy the current customer-level uplift ranking as a superior targeting policy.
+**The email campaign increased average customer spend in the randomized experiment. The current uplift-targeting model has not demonstrated that selecting customers is better than emailing everyone.**
 
-## Business question and design
+**Decision:** Treat the positive average email effect as evidence about the tested campaign mixture in this historical experiment. Do not deploy the current customer-level ranking as a superior targeting policy. A fresh randomized policy test is needed before changing contact strategy.
 
-The business question is whether assigning this historical audience to the pooled email campaign changed average spend and whether a model-based targeting rule adds value over emailing everyone. The data are the public 2008 Hillstrom / MineThatData randomized email experiment, not synthetic data. The primary comparison is intention-to-treat: pooled assignment to either creative versus assignment to no email.
+## The experiment
 
-The design-based estimate assumes correct assignment and outcome records, consistency of assigned campaign versions, no interference, and non-zero allocation to both groups. The two email creative arms and the no-email arm were assigned in approximately equal proportions; after pooling, the email probability is 2/3. Baseline balance diagnostics can reveal chance imbalances but cannot prove randomization. Post-treatment opens/clicks/visits are not valid controls for the total assignment effect.
+The public 2008 Hillstrom / MineThatData Email Analytics Challenge contains 64,000 randomized customer records assigned to three approximately equal groups:
 
-## Evidence from the randomized experiment
+- **No E-Mail:** control group
+- **Mens E-Mail:** one email creative
+- **Womens E-Mail:** another email creative
 
-The analysis covers 64,000 randomized records across two email arms and a no-email control. Pooling the two email creatives:
+The primary analysis pools the two email arms and compares assignment to either email with assignment to no email. Under this pooled design, the email assignment propensity is 2/3 and the control propensity is 1/3. The estimand is intention-to-treat: the effect of assignment, whether or not a customer opened or engaged with the email.
 
-| Outcome | Email | No email | Absolute effect | 95% CI | p-value |
-|---|---:|---:|---:|---:|---:|
-| Conversion | 1.068% | 0.573% | +0.495 percentage points | [+0.355, +0.636] pp | 4.99e-12 |
-| Visit | 16.705% | 10.617% | +6.088 percentage points | [+5.544, +6.633] pp | 1.61e-106 |
-| Spend per customer | $1.2496 | $0.6528 | +$0.5968 | [+$0.3762, +$0.8174] | 1.15e-7 |
+## Average treatment effect: what happened on average?
 
-The spend effect is an experimental average effect for the pooled email mixture, not profit. The dataset does not include campaign delivery costs or contribution margins.
+The latest reproducible advanced-statistics report gives the following pooled email-versus-control estimates:
 
-## What the evidence supports
+| Outcome | Email group | No-email group | Average effect | 95% confidence interval |
+|---|---:|---:|---:|---:|
+| Visit | 16.705% | 10.617% | +6.088 percentage points | [+5.544, +6.633] pp |
+| Conversion | 1.068% | 0.573% | +0.495 percentage points | [+0.355, +0.636] pp |
+| Spend per customer | $1.2496 | $0.6528 | +$0.5968 | [+$0.3762, +$0.8174] |
 
-1. The tested email treatment mixture increased average visit, conversion and spend relative to no email in this experiment.
-2. The uplift model's customer-level policy did not outperform emailing everyone on the randomized holdout: estimated spend was $1.1267 versus $1.3099 per customer.
-3. The model's spend R² is close to zero, so customer-level rankings should remain exploratory.
+The spend p-value is approximately 1.15e-7. The AIPW spend estimate is +$0.5943 (95% CI +$0.3739 to +$0.8148), closely agreeing with the unadjusted randomized estimate. Baseline balance is strong: the largest absolute standardized mean difference is about 0.015.
+
+**Interpretation:** assignment to the pooled email treatment increased average spend in this sample. This is spend, not profit. The dataset does not record email delivery cost or contribution margin, and the experiment is historical rather than a forecast of current campaign performance.
+
+## Targeting: did the model improve on emailing everyone?
+
+Average treatment effect and targeting performance answer different questions. A positive average effect says that email helped on average. It does not show that the model can correctly rank which customers benefit most.
+
+On the seed-42 randomized holdout, the S-learner's estimated policy value was $1.1108 per customer. Its paired difference versus emailing everyone was **-$0.0775 per customer**, with a 95% bootstrap interval of **[-$0.4115, +$0.2531]**. The interval crosses zero, so the evaluation does not establish that the S-learner is better or worse than emailing everyone. Other learned policies did not show a reliable advantage either; T-learner and recency-only targeting were significantly worse in this paired bootstrap.
+
+Across five stratified splits of the same 64,000-row dataset, the S-learner had the highest mean policy value and won three of five splits. These are repeated partitions of one experiment, not five independent replications. The result is evidence of split sensitivity, not independent confirmation.
+
+**Decision:** the targeting model is exploratory. Do not claim personalization has won. A new randomized policy experiment should compare the pre-specified targeting rule directly against email-everyone and no-email policies.
+
+## Prediction diagnostics are not targeting proof
+
+The separate one-period spend prediction model achieved MAE 2.081 versus 2.122 for a training-mean baseline, but its RMSE (15.492) was slightly worse than the baseline (15.476) and its R² was -0.0021. This is essentially no useful predictive lift over the baseline. Split-conformal intervals achieved 90.1% empirical marginal coverage against a 90% nominal target, but that is not a subgroup-specific guarantee.
+
+These prediction metrics do not validate CATE estimates or uplift ranking. Predicting who spends is not the same as predicting whose spending changes because of treatment.
 
 ## Recommended next action
 
-- Use the experiment-level effect to inform a controlled campaign discussion, not a blanket profitability claim.
-- Obtain actual contact cost and contribution margin before calculating incremental contribution.
-- Run a fresh randomized policy test comparing the proposed targeted policy with email-everyone and a no-email control.
-- Predefine the primary outcome, guardrails, sample size and stopping rule with the campaign owner before launch.
+1. Keep the average treatment effect and the targeting-policy result separate in all stakeholder communication.
+2. Obtain actual contact costs and contribution margins before making profitability claims.
+3. Pre-register a new randomized policy test: targeted policy versus email-everyone versus no-email.
+4. Define the primary outcome, guardrails, sample size, eligibility rules and stopping rule before launch.
+5. Evaluate policy value on a randomized holdout and report uncertainty; do not select the policy on the same data used to train it.
 
 ## Stakeholder handoff
 
-For a CRM/product review, present the randomized effect table first, then the holdout policy comparison and assumptions. Ask the decision owner to confirm campaign cost, margin, eligible audience, capacity and acceptable customer-contact frequency. These are the inputs required to turn experimental lift into an operational decision.
+The intended decision owner is a CRM / lifecycle marketing lead. Before an operational decision, confirm campaign cost, contribution margin, eligible audience, contact capacity and customer-contact frequency limits. This portfolio project does not claim client delivery, employment on a marketing team or external stakeholder sign-off.
 
-## Collaboration and provenance
+## Source and limitations
 
-This is an independently developed portfolio research project using a public historical experiment. The stakeholder role above describes the intended decision workflow; it is **not a claim of client delivery, employment on a marketing team, or external stakeholder sign-off**.
+The source is the public historical Hillstrom randomized email experiment. Individual customer treatment effects are not directly observed. The analysis relies on correct assignment and outcome records, consistency, positivity and no interference. Balance diagnostics are reassuring but cannot prove every randomization assumption. Opens, clicks and visits are post-treatment variables and are not adjustment covariates for the total assignment effect.
 
-**Source of truth:** [Full evaluation report](full_evaluation.md).
-
-## Limits on interpretation
-
-The primary difference-in-means is causal under the randomized assignment assumptions; it is not an observational association requiring adjustment for confounders. No synthetic ground-truth recovery experiment or hidden-confounder sensitivity analysis is claimed. The available dataset cannot test no-interference or quantify an observational hidden-confounding bias. Individual customer effects remain unobservable, and the uplift model has not shown policy superiority.
+**Source of truth:** [Full evaluation report](full_evaluation.md) and the generated JSON snapshots in `reports/`.
