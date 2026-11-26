@@ -121,15 +121,15 @@ The dataset contains neither delivery costs nor product contribution margins. Th
 
 The reproducible analysis is documented in [the full evaluation report](reports/full_evaluation.md). Model purpose, intended use, evaluation, and limitations are summarized in the [model card](reports/model_card.md) and the [identification and limitations note](reports/IDENTIFICATION_AND_LIMITATIONS.md).
 
-| Holdout policy | IPW estimated spend per customer |
+| Seed-42 policy comparison | Result |
 |---|---:|
-| Model policy | $1.127 |
-| Email everyone | $1.310 |
-| Email nobody | $0.671 |
+| S-learner policy value | $1.1108 per customer |
+| S-learner minus email-everyone | −$0.0775 per customer |
+| Paired 95% bootstrap interval | [−$0.4115, +$0.2531] |
 
-The paired model-policy minus email-everyone estimate is **−$0.183 per customer** (95% CI: −$0.444 to +$0.077). The interval includes zero. This experiment does not establish that the model policy is better or worse than emailing everyone.
+The interval crosses zero, so this holdout does not establish that the S-learner is better or worse than emailing everyone. The latest comparison is based on the five-seed benchmark's primary seed (42); see the detailed research summary and generated reports for the full strategy table.
 
-Holdout spend R² is approximately 0.002 for control and 0.0002 for treatment. The model explains very little individual spend variation. Customer-level uplift scores must therefore remain exploratory.
+The separate spend-prediction model has MAE 2.081 versus 2.122 for the mean baseline, but RMSE 15.492 is slightly worse than the baseline's 15.476 and R² is −0.0021. It explains essentially none of the individual spend variation. Customer-level uplift scores therefore remain exploratory.
 
 ## Reproducibility and setup
 
@@ -233,7 +233,7 @@ These are different statistical questions.
 
 **Individualized uplift ranking** asks a harder question: can pre-treatment characteristics reliably distinguish which customers benefit more from email? The individual treatment effect for a person is never observed because that person receives only one assignment. A T-learner approximates conditional mean outcomes by fitting separate response models in the two assignment groups, then subtracts the predictions. Noise in either model is carried into the difference; sparse conversions and highly zero-inflated spend make that especially difficult.
 
-Therefore, a positive ATE does not imply that a targeting model can identify the best recipients. Emailing everyone can be beneficial on average even when the model cannot rank heterogeneous effects accurately. In this evaluation the model-policy IPW estimate is about $1.127 per customer, compared with $1.310 for emailing everyone. The paired model-minus-email-everyone estimate is −$0.183 (95% CI −$0.444 to +$0.077), so superiority has not been demonstrated.
+Therefore, a positive ATE does not imply that a targeting model can identify the best recipients. Emailing everyone can be beneficial on average even when the model cannot rank heterogeneous effects accurately. In the latest seed-42 evaluation, the S-learner policy value is about $1.1108 per customer and its paired difference versus emailing everyone is −$0.0775 (95% CI −$0.4115 to +$0.2531). The interval crosses zero, so superiority has not been demonstrated.
 
 **Decision implication:** the experiment supports an average email effect for this historical audience; it does not support deploying the current customer-level scores or claiming that targeted allocation increases profit.
 
@@ -836,9 +836,9 @@ Do not copy old metrics into a new evaluation summary without checking the curre
 
 ### Current evidence-based interpretation
 
-The existing evaluation documents a positive average email effect on spend in this historical randomized experiment. However, the customer-level spend models have very low holdout R², and the previously reported model targeting policy did not demonstrate superiority to emailing everyone: its estimated policy value was lower, and the paired confidence interval included zero.
+The latest published evaluation documents a positive average email effect on spend in this historical randomized experiment. The separate spend-prediction model has essentially no useful predictive lift over the mean baseline: MAE improves slightly, but RMSE is worse and R² is negative.
 
-The repeated-seed benchmark previously showed the S-learner leading the mean ranking and policy-value summaries, but repeated partitions of one dataset are not independent replications. The correct conclusion is that the S-learner is a candidate worth investigating—not that it is a proven production policy.
+The S-learner leads mean policy value across five stratified splits and wins three of five, but these are partitions of the same dataset, not independent replications. On the seed-42 holdout, its paired difference versus emailing everyone is −$0.0775 (95% CI −$0.4115 to +$0.2531). The interval crosses zero. The correct conclusion is that the S-learner is a candidate for further research, not a proven superior targeting policy.
 
 The new spend-prediction and advanced-statistics reports must be generated and inspected before quoting their latest metrics. Until then, do not claim that the prediction model beats its baseline or that conformal intervals achieve their nominal coverage.
 
