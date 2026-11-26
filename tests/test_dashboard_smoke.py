@@ -1,7 +1,12 @@
+from pathlib import Path
+
 import numpy as np
 import pandas as pd
 from streamlit.testing.v1 import AppTest
 from unittest.mock import patch
+
+
+REPO_ROOT = Path(__file__).resolve().parents[1]
 
 
 EXECUTIVE_PAGES = [
@@ -51,7 +56,7 @@ def test_every_main_dashboard_page_renders_without_streamlit_exceptions():
         patch("causal_ai.modeling.load_models", return_value=object()),
         patch("causal_ai.modeling.score_customers", return_value=scored),
     ):
-        app = AppTest.from_file("app.py", default_timeout=30).run()
+        app = AppTest.from_file(REPO_ROOT / "app.py", default_timeout=30).run()
         assert not app.exception
 
         app.sidebar.radio[0].set_value("Executive view")
@@ -70,5 +75,6 @@ def test_every_main_dashboard_page_renders_without_streamlit_exceptions():
 
 
 def test_research_analytics_page_renders_from_published_reports():
-    app = AppTest.from_file("pages/2_Research_Analytics.py", default_timeout=30).run()
+    app = AppTest.from_file(REPO_ROOT / "app.py", default_timeout=30).run()
+    app.switch_page("pages/2_Research_Analytics.py").run()
     assert not app.exception
